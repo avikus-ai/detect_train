@@ -56,9 +56,10 @@ def save_one_txt(predn, save_conf, shape, file):
             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
 
-def save_one_json(predn, jdict, path, class_map):
+def save_one_json(predn, jdict, path, class_map, name2id):
     # Save one JSON result {"image_id": 42, "category_id": 18, "bbox": [258.15, 41.29, 348.26, 243.78], "score": 0.236}
-    image_id = int(path.stem) if path.stem.isnumeric() else path.stem
+    # image_id = int(path.stem) if path.stem.isnumeric() else path.stem
+    image_id = name2id[str(path.stem)]
     box = xyxy2xywh(predn[:, :4])  # xywh
     box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
     for p, b in zip(predn.tolist(), box.tolist()):
@@ -124,6 +125,7 @@ def run(
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
+        coco_eval=True
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -153,6 +155,16 @@ def run(
 
         # Data
         data = check_dataset(data)  # check
+
+    # 23.01.09
+    # reads coco val json
+    if coco_eval:
+        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
+        json_path = Path(data_dir).parents[1] / 'labels' / 'val.json'
+        with open(str(json_path), 'r') as f:
+            val_json = json.load(f)
+        assert val_json is not None, 'missing json file for coco map'
+        name2id = val_json.get('name2id')
 
     # Configure
     model.eval()
@@ -258,8 +270,8 @@ def run(
             # Save/log
             if save_txt:
                 save_one_txt(predn, save_conf, shape, file=save_dir / 'labels' / f'{path.stem}.txt')
-            if save_json:
-                save_one_json(predn, jdict, path, class_map)  # append to COCO-JSON dictionary
+            if coco_eval:
+                save_one_json(predn, jdict, path, class_map, name2id)  # append to COCO-JSON dictionary
             callbacks.run('on_val_image_end', pred, predn, path, names, im[si])
 
         # Plot images
@@ -300,9 +312,9 @@ def run(
         callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
 
     # Save JSON
-    if save_json and len(jdict):
+    if coco_eval:
         w = Path(weights[0] if isinstance(weights, list) else weights).stem if weights is not None else ''  # weights
-        anno_json = str(Path('../datasets/coco/annotations/instances_val2017.json'))  # annotations
+        anno_json = str(json_path)  # annotations
         pred_json = str(save_dir / f"{w}_predictions.json")  # predictions
         LOGGER.info(f'\nEvaluating pycocotools mAP... saving {pred_json}...')
         with open(pred_json, 'w') as f:
@@ -316,8 +328,7 @@ def run(
             anno = COCO(anno_json)  # init annotations api
             pred = anno.loadRes(pred_json)  # init predictions api
             eval = COCOeval(anno, pred, 'bbox')
-            if is_coco:
-                eval.params.imgIds = [int(Path(x).stem) for x in dataloader.dataset.im_files]  # image IDs to evaluate
+            eval.params.imgIds = list(name2id.values())  # image IDs to evaluate
             eval.evaluate()
             eval.accumulate()
             eval.summarize()
