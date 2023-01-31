@@ -134,21 +134,21 @@ class Layers(object):
         self.route('-3, -1')
         self.convolutional(child.stem_3)
 
-    def GhostConv(self, child):
-        self.currenct = child.i
-        self.fc.write('\n# GhostConv\n')
+    # def GhostConv(self, child):
+    #     self.currenct = child.i
+    #     self.fc.write('\n# GhostConv\n')
 
-        self.convolutional(child.cv1)
-        self.convolutional(child.cv2)
-        self.route('-2', '-1')
+    #     self.convolutional(child.cv1)
+    #     self.convolutional(child.cv2)
+    #     self.route('-2', '-1')
 
-    def C3Ghost(self, child):
-        self.current = child.i
-        self.fc.write('\n# C3Ghost')
+    # def C3Ghost(self, child):
+    #     self.current = child.i
+    #     self.fc.write('\n# C3Ghost')
 
-        idx = 0
-        for m in child.m:
-            if m.add:
+    #     idx = 0
+    #     for m in child.m:
+    #         if m.add:
                 
 
 # for m in child.m:

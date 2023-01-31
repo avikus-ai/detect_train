@@ -24,7 +24,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from subprocess import check_output
 from tarfile import is_tarfile
-from typing import Optional
+from typing import Optional, List
 from zipfile import ZipFile, is_zipfile
 
 import cv2
@@ -1133,3 +1133,36 @@ def imshow(path, im):
 cv2.imread, cv2.imwrite, cv2.imshow = imread, imwrite, imshow  # redefine
 
 # Variables ------------------------------------------------------------------------------------------------------------
+
+
+# Extra Functions
+def yolo2alb(labels: np.ndarray) -> np.ndarray:
+    if not labels.size:  # in case of no labels in the original image
+        return np.zeros((0, 5))
+    
+    out = np.zeros_like(labels)
+    out[:, 0] = labels[:, 0]
+    out[:, 1] = np.clip(labels[:, 1] - labels[:, 3] / 2, 0, 1)
+    out[:, 2] = np.clip(labels[:, 2] - labels[:, 4] / 2, 0, 1)
+    out[:, 3] = np.clip(labels[:, 1] + labels[:, 3] / 2, 0, 1)
+    out[:, 4] = np.clip(labels[:, 2] + labels[:, 4] / 2, 0, 1)
+    
+    return out
+    
+
+def alb2yolo(labels: np.ndarray) -> np.ndarray:
+    if not labels.size:
+        return np.zeros((0, 5))
+    
+    out = np.zeros_like(labels)
+    out[:, 0] = labels[:, 0]
+    
+    width = np.clip(labels[:, 3] - labels[:, 1], 0, 1)
+    height = np.clip(labels[:, 4] - labels[:, 2], 0, 1)
+    
+    out[:, 1] = np.clip(labels[:, 1] + width / 2, 0, 1)
+    out[:, 2] = np.clip(labels[:, 2] + height / 2, 0, 1)
+    out[:, 3] = width
+    out[:, 4] = height
+    
+    return out

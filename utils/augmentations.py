@@ -29,6 +29,7 @@ class Albumentations:
             check_version(A.__version__, '1.0.3', hard=True)  # version requirement
 
             T = [
+                # A.Normalize((0.394, 0.459, 0.515), (0.255, 0.256, 0.276)),
                 A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
                 A.Blur(p=0.01),
                 A.MedianBlur(p=0.01),
@@ -50,6 +51,39 @@ class Albumentations:
             new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
             im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
         return im, labels
+    
+
+# 23.01.31
+# RandomCroppedResize
+class RandomCroppedResize:
+    def __init__(self) -> None:
+        self.transform = None
+        prefix = colorstr('albumentations: ')
+        
+        try:
+            import albumentations as A
+            
+            T = [
+                A.RandomCrop(320, 320, always_apply=True),
+                A.Resize(640, 640, always_apply=True)
+            ]
+            self.transform = A.Compose(T, bbox_params=A.BboxParams(format='albumentations', label_fields=['class_labels']))
+            
+        except ImportError:
+            pass
+
+        except Exception as e:
+            LOGGER.info(f'{prefix}{e}')
+    
+    def __call__(self,
+                 im: np.ndarray,
+                 labels: np.ndarray) -> None:
+        if self.transform is not None:
+            t = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])
+            if labels.size == 0:  # in case of no labels in the original image
+                return t['image'], np.zeros((0, 5))
+            t_im, t_label = t['image'], np.array([[c, *b] for c, b in zip(t['class_labels'], t['bboxes'])]) if len(t['bboxes']) else np.zeros((0, 5))
+            return t_im, t_label
 
 
 def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False):

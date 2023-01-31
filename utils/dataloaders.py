@@ -17,6 +17,7 @@ from multiprocessing.pool import Pool, ThreadPool
 from pathlib import Path
 from threading import Thread
 from urllib.parse import urlparse
+from typing import List, Dict
 
 import numpy as np
 import psutil
@@ -29,10 +30,10 @@ from torch.utils.data import DataLoader, Dataset, dataloader, distributed
 from tqdm import tqdm
 
 from utils.augmentations import (Albumentations, augment_hsv, classify_albumentations, classify_transforms, copy_paste,
-                                 letterbox, mixup, random_perspective)
+                                 letterbox, mixup, random_perspective, RandomCroppedResize)
 from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, TQDM_BAR_FORMAT, check_dataset, check_requirements,
                            check_yaml, clean_str, cv2, is_colab, is_kaggle, segments2boxes, unzip_file, xyn2xy,
-                           xywh2xyxy, xywhn2xyxy, xyxy2xywhn)
+                           xywh2xyxy, xywhn2xyxy, xyxy2xywhn, yolo2alb, alb2yolo)
 from utils.torch_utils import torch_distributed_zero_first
 
 # Parameters
@@ -42,6 +43,29 @@ VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 't
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
+
+CATEGORIES = [
+    {
+        "id": 0,
+        "name": "Buoy",
+        "supercategory": ""
+    },
+    {
+        "id": 1,
+        "name": "Boat",
+        "supercategory": ""
+    },
+    {
+        "id": 2,
+        "name": "Channel Marker",
+        "supercategory": ""
+    },
+    {
+        "id": 3,
+        "name": "Speed Warning Sign",
+        "supercategory": ""
+    }
+]
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
@@ -98,6 +122,68 @@ def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+    
+# 22.12.19
+# coco map 계산을 위한 json 파일 자동생성
+def create_val_json(labels: List[np.ndarray],
+                    label_files: List[str],
+                    shapes: np.ndarray,
+                    json_path: Path,
+                    categories: List[Dict]):
+    func_start_t = time.time()
+    assert len(labels) == len(label_files), 'num labels and num label files do not match'
+    name2id = {}
+    images = []
+    annotations = []
+    label_id = 0
+
+    for i, (label, label_file) in enumerate(zip(labels, label_files)):
+        img_w, img_h = shapes[i].astype(float)
+        l = np.zeros_like(label)
+        l[:, 0] = label[:, 0]
+        l[:, 1:4:2] = label[:, 1:4:2] * img_w
+        l[:, 2:5:2] = label[:, 2:5:2] * img_h
+        cls_, x, y, w, h = l.T.astype(float)
+
+        x1 = x - w / 2
+        y1 = y - h / 2
+
+        images.append({
+            'file_name': label_file,
+            'height': img_h,
+            'width': img_w,
+            'id': i
+        })
+
+        name2id[str(Path(label_file).stem)] = i
+
+        annotations += [{
+            'area': ww * hh,
+            'bbox': [
+                xx1,
+                yy1,
+                ww,
+                hh
+            ],
+            'category_id': int(cls_id),
+            'id': label_id + j,
+            'image_id': i,
+            'iscrowd': 0
+        } for j, (cls_id, xx1, yy1, ww, hh) in enumerate(zip(cls_, x1, y1, w, h))]
+
+        label_id += label.shape[0]
+
+    out = {
+        'name2id': name2id,
+        'images': images,
+        'annotations': annotations,
+        'categories': categories
+    }
+
+    with open(str(json_path), 'w') as f:
+        json.dump(out, f)
+
+    print(f'create_val_json took {time.time() - func_start_t}')
 
 
 def create_dataloader(path,
@@ -510,6 +596,12 @@ class LoadImagesAndLabels(Dataset):
         self.shapes = np.array(shapes)
         self.im_files = list(cache.keys())  # update
         self.label_files = img2label_paths(cache.keys())  # update
+        
+        # 22.12.19
+        # Check val json
+        if 'val' in prefix:
+            json_path = Path(self.label_files[0]).parents[1] / 'val.json'
+            create_val_json(self.labels, self.label_files, self.shapes, json_path, CATEGORIES)
 
         # Filter images
         if min_items:
@@ -665,15 +757,48 @@ class LoadImagesAndLabels(Dataset):
                 img, labels = mixup(img, labels, *self.load_mosaic(random.randint(0, self.n - 1)))
 
         else:
+            # # Load image
+            # img, (h0, w0), (h, w) = self.load_image(index)
+
+            # # Letterbox
+            # shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            # img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            # shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
+
+            # labels = self.labels[index].copy()
+            # if labels.size:  # normalized xywh to pixel xyxy format
+            #     labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
+            
             # Load image
             img, (h0, w0), (h, w) = self.load_image(index)
+            
+            if self.augment:
+                # Load labels
+                labels = self.labels[index].copy()
+                if labels.size and labels.ndim == 1:
+                    labels = np.expand_dims(labels, 0)
+                assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
+                
+                # Turn labels into albumentations format
+                labels = yolo2alb(labels)
+                
+                # Apply RandomCroppedResize
+                t = RandomCroppedResize()
+                img, labels = t(img, labels)
+                
+                # Turn labels into yolo format
+                labels = alb2yolo(labels)
+                
+                # Override image shapes with cropped shape
+                h, w = img.shape[:2]
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
             img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
-            labels = self.labels[index].copy()
+            if not self.augment:
+                labels = self.labels[index].copy()
             if labels.size:  # normalized xywh to pixel xyxy format
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
 
@@ -757,6 +882,27 @@ class LoadImagesAndLabels(Dataset):
         for i, index in enumerate(indices):
             # Load image
             img, _, (h, w) = self.load_image(index)
+            
+            if self.augment:
+            
+                # Load Labels
+                labels = self.labels[index].copy()
+                if labels.size and labels.ndim == 1:
+                    labels = np.expand_dims(labels, 0)
+                assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
+                
+                # Turn labels into albumentations format
+                labels = yolo2alb(labels)
+                
+                # Apply RandomCroppedResize
+                t = RandomCroppedResize()
+                img, labels = t(img, labels)
+                
+                # Turn labels into yolo format
+                labels = alb2yolo(labels)
+                
+                # Override image shapes with cropped shape
+                h, w = img.shape[:2]
 
             # place img in img4
             if i == 0:  # top left
@@ -778,7 +924,10 @@ class LoadImagesAndLabels(Dataset):
             padh = y1a - y1b
 
             # Labels
-            labels, segments = self.labels[index].copy(), self.segments[index].copy()
+            # labels, segments = self.labels[index].copy(), self.segments[index].copy()
+            if not self.augment:
+                labels = self.labels[index].copy()
+            segments = self.segments[index].copy()
             if labels.size:
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], w, h, padw, padh)  # normalized xywh to pixel xyxy format
                 segments = [xyn2xy(x, w, h, padw, padh) for x in segments]
