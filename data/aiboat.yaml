@@ -1,8 +1,8 @@
 train:
-  - /data/NeuBoat/FLL_renamed/images/train
+  - /data/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221028/
 
 val: 
-  - /data/NeuBoat/FLL_renamed/images/val
+  - /data/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/busan_220525_departure/
 
 nc: 4
 names: ['Buoy', 'Boat', 'Channel Marker', 'Speed Warning Sign']
