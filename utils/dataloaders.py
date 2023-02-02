@@ -115,7 +115,6 @@ def create_val_json(labels: List[np.ndarray],
                     shapes: np.ndarray,
                     json_path: Path,
                     categories: List[Dict]):
-    print(label_files[:2])
     print(f'in the create val json func, {json_path}')
     func_start_t = time.time()
     assert len(labels) == len(label_files), 'num labels and num label files do not match'

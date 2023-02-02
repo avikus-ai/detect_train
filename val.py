@@ -60,7 +60,6 @@ def save_one_json(predn, jdict, path, class_map, name2id):
     # Save one JSON result {"image_id": 42, "category_id": 18, "bbox": [258.15, 41.29, 348.26, 243.78], "score": 0.236}
     # image_id = int(path.stem) if path.stem.isnumeric() else path.stem
     image_id = name2id[str(path).rsplit(".", 1)[0]]
-    print(str(path).rsplit(".", 1)[0])
     box = xyxy2xywh(predn[:, :4])  # xywh
     box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
     for p, b in zip(predn.tolist(), box.tolist()):
