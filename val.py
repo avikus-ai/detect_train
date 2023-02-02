@@ -161,10 +161,6 @@ def run(
     # reads coco val json
     if coco_eval:
         data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
-        # print(f'in the val.py data_dir is {data_dir}')
-        # json_path = Path(data_dir).parents[1] / 'labels' / 'val.json'
-        # json_path = Path(data_dir).parents[0] / 'val.json'
-        # print(f'in this ')
         json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
         with open(str(json_path), 'r') as f:
             val_json = json.load(f)
