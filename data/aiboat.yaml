@@ -1,8 +1,8 @@
 train:
-  - /data/FLL_renamed/images/train
+  - /data/NeuBoat/FLL_renamed/images/train
 
 val: 
-  - /data/FLL_renamed/images/val
+  - /data/NeuBoat/FLL_renamed/images/val
 
 nc: 4
 names: ['Buoy', 'Boat', 'Channel Marker', 'Speed Warning Sign']

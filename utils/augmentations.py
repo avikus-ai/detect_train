@@ -64,8 +64,10 @@ class RandomCroppedResize:
             import albumentations as A
             
             T = [
-                A.RandomCrop(320, 320, always_apply=True),
-                A.Resize(640, 640, always_apply=True)
+                # A.RandomCrop(80, 320, always_apply=True),
+                # A.Resize(640, 640, always_apply=True)
+                A.RandomResizedCrop(720, 1080, (0.01, 0.2), (1.333, 0.6), p=0.4)
+                # A.RandomSizedBBoxSafeCrop(720, 1080, 0.6, always_apply=True)
             ]
             self.transform = A.Compose(T, bbox_params=A.BboxParams(format='albumentations', label_fields=['class_labels']))
             

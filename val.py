@@ -40,7 +40,7 @@ from utils.callbacks import Callbacks
 from utils.dataloaders import create_dataloader
 from utils.general import (LOGGER, TQDM_BAR_FORMAT, Profile, check_dataset, check_img_size, check_requirements,
                            check_yaml, coco80_to_coco91_class, colorstr, increment_path, non_max_suppression,
-                           print_args, scale_boxes, xywh2xyxy, xyxy2xywh)
+                           print_args, scale_boxes, xywh2xyxy, xyxy2xywh, get_sliced_pixels, slice_img)
 from utils.metrics import ConfusionMatrix, ap_per_class, box_iou
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, smart_inference_mode
@@ -125,7 +125,8 @@ def run(
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
-        coco_eval=True
+        coco_eval=True,
+        slicing=False
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -160,7 +161,11 @@ def run(
     # reads coco val json
     if coco_eval:
         data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
-        json_path = Path(data_dir).parents[1] / 'labels' / 'val.json'
+        # print(f'in the val.py data_dir is {data_dir}')
+        # json_path = Path(data_dir).parents[1] / 'labels' / 'val.json'
+        # json_path = Path(data_dir).parents[0] / 'val.json'
+        # print(f'in this ')
+        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
         with open(str(json_path), 'r') as f:
             val_json = json.load(f)
         assert val_json is not None, 'missing json file for coco map'
@@ -215,6 +220,12 @@ def run(
             im = im.half() if half else im.float()  # uint8 to fp16/32
             im /= 255  # 0 - 255 to 0.0 - 1.0
             nb, _, height, width = im.shape  # batch size, channels, height, width
+            
+        # If validating in slicing mode
+        if slicing:
+            sliced_pixels = get_sliced_pixels(width, height, 100, 100, 0.1, 0.1)
+            sliced_imgs = slice_img(im, sliced_pixels)
+            im = torch.stack(sliced_imgs)
 
         # Inference
         with dt[1]:

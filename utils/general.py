@@ -1166,3 +1166,56 @@ def alb2yolo(labels: np.ndarray) -> np.ndarray:
     out[:, 4] = height
     
     return out
+
+
+def get_single_sliced_pixels(img_w: int,
+                             start_h: int,
+                             end_h: int,
+                             slicing_w: int,
+                             overlap_ratio: float) -> List[List[int]]:
+    out = []
+    overlapped_x = round(slicing_w * overlap_ratio)
+    min_x = 0
+    max_x = min_x + slicing_w
+    
+    while max_x < img_w:
+        out.append([min_x, start_h, max_x, end_h])
+        min_x = max_x - overlapped_x
+        max_x = min_x + slicing_w
+        
+    out.append([img_w - slicing_w, start_h, img_w, end_h])
+        
+    return out
+
+
+def get_sliced_pixels(img_w: int,
+                      img_h: int,
+                      slicing_w: int,
+                      slicing_h: int,
+                      w_overlap_ratio: float,
+                      h_overlap_ratio: float) -> List[List[int]]:
+    out = []
+    overlapped_y =  round(slicing_h * h_overlap_ratio)
+    min_y = 0
+    max_y = min_y + slicing_h
+    
+    while max_y < img_h:
+        slicied_signle_row = get_single_sliced_pixels(img_w, min_y, max_y, slicing_w, w_overlap_ratio)
+        out.extend(slicied_signle_row)
+        min_y = max_y - overlapped_y
+        max_y = min_y + slicing_h
+        
+    min_y, max_y = img_h - slicing_h, img_h
+    out.extend(get_single_sliced_pixels(img_w, min_y, max_y, slicing_w, w_overlap_ratio))
+        
+    return out
+
+
+def slice_img(img: np.ndarray,
+              sliced_pixels: List[List[int]]) -> np.ndarray:
+    # assert img.shape[2] == 3, f'channel is expected to be on the last dimension'  # height, width, channel
+    # sliced_imgs = [img[y1:y2, x1:x2, :] for x1, y1, x2, y2 in sliced_pixels]
+    sliced_imgs = [img[:, y1:y2, x1:x2] for x1, y1, x2, y2 in sliced_pixels]
+    
+    return sliced_imgs
+    

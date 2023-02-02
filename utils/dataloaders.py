@@ -47,22 +47,7 @@ PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_
 CATEGORIES = [
     {
         "id": 0,
-        "name": "Buoy",
-        "supercategory": ""
-    },
-    {
-        "id": 1,
-        "name": "Boat",
-        "supercategory": ""
-    },
-    {
-        "id": 2,
-        "name": "Channel Marker",
-        "supercategory": ""
-    },
-    {
-        "id": 3,
-        "name": "Speed Warning Sign",
+        "name": "Vessel",
         "supercategory": ""
     }
 ]
@@ -130,6 +115,7 @@ def create_val_json(labels: List[np.ndarray],
                     shapes: np.ndarray,
                     json_path: Path,
                     categories: List[Dict]):
+    print(f'in the create val json func, {json_path}')
     func_start_t = time.time()
     assert len(labels) == len(label_files), 'num labels and num label files do not match'
     name2id = {}
@@ -202,7 +188,8 @@ def create_dataloader(path,
                       quad=False,
                       prefix='',
                       shuffle=False,
-                      seed=0):
+                      seed=0,
+                      slicing=False):
     if rect and shuffle:
         LOGGER.warning('WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False')
         shuffle = False
@@ -600,7 +587,11 @@ class LoadImagesAndLabels(Dataset):
         # 22.12.19
         # Check val json
         if 'val' in prefix:
-            json_path = Path(self.label_files[0]).parents[1] / 'val.json'
+            # print(self.label_files[0])
+            # print(Path(self.label_files[0]).parents[0])
+            # print(Path(self.label_files[0]).parents[1])
+            # json_path = Path(self.label_files[0]).parents[0] / 'val.json'
+            json_path = Path(self.label_files[0].rsplit('/labels', 1)[0]) / 'val.json'
             create_val_json(self.labels, self.label_files, self.shapes, json_path, CATEGORIES)
 
         # Filter images
@@ -758,49 +749,49 @@ class LoadImagesAndLabels(Dataset):
 
         else:
             # # Load image
-            # img, (h0, w0), (h, w) = self.load_image(index)
-
-            # # Letterbox
-            # shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
-            # img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
-            # shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
-
-            # labels = self.labels[index].copy()
-            # if labels.size:  # normalized xywh to pixel xyxy format
-            #     labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
-            
-            # Load image
             img, (h0, w0), (h, w) = self.load_image(index)
-            
-            if self.augment:
-                # Load labels
-                labels = self.labels[index].copy()
-                if labels.size and labels.ndim == 1:
-                    labels = np.expand_dims(labels, 0)
-                assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
-                
-                # Turn labels into albumentations format
-                labels = yolo2alb(labels)
-                
-                # Apply RandomCroppedResize
-                t = RandomCroppedResize()
-                img, labels = t(img, labels)
-                
-                # Turn labels into yolo format
-                labels = alb2yolo(labels)
-                
-                # Override image shapes with cropped shape
-                h, w = img.shape[:2]
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
             img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
-            if not self.augment:
-                labels = self.labels[index].copy()
+            labels = self.labels[index].copy()
             if labels.size:  # normalized xywh to pixel xyxy format
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
+            
+            # # Load image
+            # img, (h0, w0), (h, w) = self.load_image(index)
+            
+            # if self.augment:
+            #     # Load labels
+            #     labels = self.labels[index].copy()
+            #     if labels.size and labels.ndim == 1:
+            #         labels = np.expand_dims(labels, 0)
+            #     assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
+                
+            #     # Turn labels into albumentations format
+            #     labels = yolo2alb(labels)
+                
+            #     # Apply RandomCroppedResize
+            #     t = RandomCroppedResize()
+            #     img, labels = t(img, labels)
+                
+            #     # Turn labels into yolo format
+            #     labels = alb2yolo(labels)
+                
+            #     # Override image shapes with cropped shape
+            #     h, w = img.shape[:2]
+
+            # Letterbox
+            shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
+
+            # if not self.augment:
+            #     labels = self.labels[index].copy()
+            # if labels.size:  # normalized xywh to pixel xyxy format
+            #     labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
 
             if self.augment:
                 img, labels = random_perspective(img,
@@ -849,7 +840,9 @@ class LoadImagesAndLabels(Dataset):
 
         return torch.from_numpy(img), labels_out, self.im_files[index], shapes
 
-    def load_image(self, i):
+    def load_image(self,
+                   i,
+                   random_crop=True):
         # Loads 1 image from dataset index 'i', returns (im, original hw, resized hw)
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i],
         if im is None:  # not cached in RAM
@@ -858,6 +851,25 @@ class LoadImagesAndLabels(Dataset):
             else:  # read image
                 im = cv2.imread(f)  # BGR
                 assert im is not None, f'Image Not Found {f}'
+                
+            # 23.02.02
+            # Apply RandomCroppedResize first
+            if random_crop:
+                labels = self.labels[i].copy()
+                
+                # Turn labels into albumentations format
+                labels = yolo2alb(labels)
+                
+                # Apply RandomCroppedResize
+                t = RandomCroppedResize()
+                im, labels = t(im, labels)
+                
+                # Turn labels into yolo format
+                labels = alb2yolo(labels)
+
+                # Save new labels
+                self.labels[i] = labels
+
             h0, w0 = im.shape[:2]  # orig hw
             r = self.img_size / max(h0, w0)  # ratio
             if r != 1:  # if sizes are not equal
@@ -883,26 +895,26 @@ class LoadImagesAndLabels(Dataset):
             # Load image
             img, _, (h, w) = self.load_image(index)
             
-            if self.augment:
+            # if self.augment:
             
-                # Load Labels
-                labels = self.labels[index].copy()
-                if labels.size and labels.ndim == 1:
-                    labels = np.expand_dims(labels, 0)
-                assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
+            #     # Load Labels
+            #     labels = self.labels[index].copy()
+            #     if labels.size and labels.ndim == 1:
+            #         labels = np.expand_dims(labels, 0)
+            #     assert labels.ndim == 2 or labels.size == 0, f'labels have a wrong dimension'
                 
-                # Turn labels into albumentations format
-                labels = yolo2alb(labels)
+            #     # Turn labels into albumentations format
+            #     labels = yolo2alb(labels)
                 
-                # Apply RandomCroppedResize
-                t = RandomCroppedResize()
-                img, labels = t(img, labels)
+            #     # Apply RandomCroppedResize
+            #     t = RandomCroppedResize()
+            #     img, labels = t(img, labels)
                 
-                # Turn labels into yolo format
-                labels = alb2yolo(labels)
+            #     # Turn labels into yolo format
+            #     labels = alb2yolo(labels)
                 
-                # Override image shapes with cropped shape
-                h, w = img.shape[:2]
+            #     # Override image shapes with cropped shape
+            #     h, w = img.shape[:2]
 
             # place img in img4
             if i == 0:  # top left
@@ -924,10 +936,10 @@ class LoadImagesAndLabels(Dataset):
             padh = y1a - y1b
 
             # Labels
-            # labels, segments = self.labels[index].copy(), self.segments[index].copy()
-            if not self.augment:
-                labels = self.labels[index].copy()
-            segments = self.segments[index].copy()
+            labels, segments = self.labels[index].copy(), self.segments[index].copy()
+            # if not self.augment:
+            #     labels = self.labels[index].copy()
+            # segments = self.segments[index].copy()
             if labels.size:
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], w, h, padw, padh)  # normalized xywh to pixel xyxy format
                 segments = [xyn2xy(x, w, h, padw, padh) for x in segments]
