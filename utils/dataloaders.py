@@ -115,6 +115,7 @@ def create_val_json(labels: List[np.ndarray],
                     shapes: np.ndarray,
                     json_path: Path,
                     categories: List[Dict]):
+    print(label_files[:2])
     print(f'in the create val json func, {json_path}')
     func_start_t = time.time()
     assert len(labels) == len(label_files), 'num labels and num label files do not match'
@@ -141,7 +142,8 @@ def create_val_json(labels: List[np.ndarray],
             'id': i
         })
 
-        name2id[str(Path(label_file).stem)] = i
+        # name2id[str(Path(label_file).stem)] = i
+        name2id[label_file.replace('labels', 'images').rsplit(".", 1)[0]] = i
 
         annotations += [{
             'area': ww * hh,
