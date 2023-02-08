@@ -118,7 +118,14 @@ class Loggers():
 
         # ClearML
         if clearml and 'clearml' in self.include:
-            self.clearml = ClearmlLogger(self.opt, self.hyp)
+            try:
+                self.clearml = ClearmlLogger(self.opt, self.hyp)
+            except Exception:
+                self.clearml = None
+                prefix = colorstr('ClearML: ')
+                LOGGER.warning(f'{prefix}WARNING ⚠️ ClearML is installed but not configured, skipping ClearML logging.'
+                               f' See https://github.com/ultralytics/yolov5/tree/master/utils/loggers/clearml#readme')
+
         else:
             self.clearml = None
 
@@ -172,7 +179,7 @@ class Loggers():
         # Callback runs on train batch end
         # ni: number integrated batches (since train start)
         if self.plots:
-            if ni < 3:
+            if ni < 20:
                 f = self.save_dir / f'train_batch{ni}.jpg'  # filename
                 plot_images(imgs, targets, paths, f)
                 if ni == 0 and self.tb and not self.opt.sync_bn:
@@ -210,12 +217,19 @@ class Loggers():
         if self.comet_logger:
             self.comet_logger.on_val_batch_end(batch_i, im, targets, paths, shapes, out)
 
-    def on_val_end(self, nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix):
+    def on_val_end(self, nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, map_size=None):
         # Callback runs on val end
         if self.wandb or self.clearml:
             files = sorted(self.save_dir.glob('val*.jpg'))
             if self.wandb:
                 self.wandb.log({"Validation": [wandb.Image(str(f), caption=f.name) for f in files]})
+                sizes = ('s', 'm', 'l')
+                cls_plots = [f'val_{elem}_ap50' for elem in ap_class]
+                size_plots = [f'val_{size}_ap50' for size in sizes]
+                for idx, cls_map in enumerate(ap50):
+                    self.wandb.log({cls_plots[idx]: cls_map})
+                # for idx, size_map in enumerate(map_size):
+                #     self.wandb.log({size_plots[idx]: size_map})
             if self.clearml:
                 self.clearml.log_debug_samples(files, title='Validation')
 

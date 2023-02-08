@@ -313,6 +313,7 @@ class Concat(nn.Module):
         return torch.cat(x, self.d)
 
 
+# Extra Modules
 class StemBlock(nn.Module):
     def __init__(self, c1, c2, k=3, s=2, p=None, g=1, act=True):
         super().__init__()

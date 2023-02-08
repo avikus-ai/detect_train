@@ -17,6 +17,7 @@ from multiprocessing.pool import Pool, ThreadPool
 from pathlib import Path
 from threading import Thread
 from urllib.parse import urlparse
+from typing import List, Dict
 
 import numpy as np
 import psutil
@@ -29,10 +30,10 @@ from torch.utils.data import DataLoader, Dataset, dataloader, distributed
 from tqdm import tqdm
 
 from utils.augmentations import (Albumentations, augment_hsv, classify_albumentations, classify_transforms, copy_paste,
-                                 letterbox, mixup, random_perspective)
+                                 letterbox, mixup, random_perspective, RandomCroppedResize)
 from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, TQDM_BAR_FORMAT, check_dataset, check_requirements,
                            check_yaml, clean_str, cv2, is_colab, is_kaggle, segments2boxes, unzip_file, xyn2xy,
-                           xywh2xyxy, xywhn2xyxy, xyxy2xywhn)
+                           xywh2xyxy, xywhn2xyxy, xyxy2xywhn, yolo2alb, alb2yolo)
 from utils.torch_utils import torch_distributed_zero_first
 
 # Parameters
@@ -42,6 +43,14 @@ VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 't
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
+
+CATEGORIES = [
+    {
+        "id": 0,
+        "name": "Vessel",
+        "supercategory": ""
+    }
+]
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
@@ -98,6 +107,70 @@ def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+    
+# 22.12.19
+# coco map 계산을 위한 json 파일 자동생성
+def create_val_json(labels: List[np.ndarray],
+                    label_files: List[str],
+                    shapes: np.ndarray,
+                    json_path: Path,
+                    categories: List[Dict]):
+    print(f'in the create val json func, {json_path}')
+    func_start_t = time.time()
+    assert len(labels) == len(label_files), 'num labels and num label files do not match'
+    name2id = {}
+    images = []
+    annotations = []
+    label_id = 0
+
+    for i, (label, label_file) in enumerate(zip(labels, label_files)):
+        img_w, img_h = shapes[i].astype(float)
+        l = np.zeros_like(label)
+        l[:, 0] = label[:, 0]
+        l[:, 1:4:2] = label[:, 1:4:2] * img_w
+        l[:, 2:5:2] = label[:, 2:5:2] * img_h
+        cls_, x, y, w, h = l.T.astype(float)
+
+        x1 = x - w / 2
+        y1 = y - h / 2
+
+        images.append({
+            'file_name': label_file,
+            'height': img_h,
+            'width': img_w,
+            'id': i
+        })
+
+        # name2id[str(Path(label_file).stem)] = i
+        name2id[label_file.replace('labels', 'images').rsplit(".", 1)[0]] = i
+
+        annotations += [{
+            'area': ww * hh,
+            'bbox': [
+                xx1,
+                yy1,
+                ww,
+                hh
+            ],
+            'category_id': int(cls_id),
+            'id': label_id + j,
+            'image_id': i,
+            'iscrowd': 0
+        } for j, (cls_id, xx1, yy1, ww, hh) in enumerate(zip(cls_, x1, y1, w, h))]
+
+        label_id += label.shape[0]
+
+    out = {
+        'name2id': name2id,
+        'images': images,
+        'annotations': annotations,
+        'categories': categories
+    }
+
+    with open(str(json_path), 'w') as f:
+        json.dump(out, f)
+
+    print(f'create_val_json took {time.time() - func_start_t}')
 
 
 def create_dataloader(path,
@@ -115,7 +188,9 @@ def create_dataloader(path,
                       image_weights=False,
                       quad=False,
                       prefix='',
-                      shuffle=False):
+                      shuffle=False,
+                      seed=0,
+                      slicing=False):
     if rect and shuffle:
         LOGGER.warning('WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False')
         shuffle = False
@@ -140,7 +215,7 @@ def create_dataloader(path,
     sampler = None if rank == -1 else distributed.DistributedSampler(dataset, shuffle=shuffle)
     loader = DataLoader if image_weights else InfiniteDataLoader  # only DataLoader allows for attribute updates
     generator = torch.Generator()
-    generator.manual_seed(6148914691236517205 + RANK)
+    generator.manual_seed(6148914691236517205 + seed + RANK)
     return loader(dataset,
                   batch_size=batch_size,
                   shuffle=shuffle and sampler is None,
@@ -238,6 +313,8 @@ class LoadScreenshots:
 class LoadImages:
     # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
     def __init__(self, path, img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
+        if isinstance(path, str) and Path(path).suffix == ".txt":  # *.txt file with img/vid/dir on each line
+            path = Path(path).read_text().rsplit()
         files = []
         for p in sorted(path) if isinstance(path, (list, tuple)) else [path]:
             p = str(Path(p).resolve())
@@ -338,7 +415,7 @@ class LoadImages:
 
 class LoadStreams:
     # YOLOv5 streamloader, i.e. `python detect.py --source 'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP streams`
-    def __init__(self, sources='streams.txt', img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
+    def __init__(self, sources='file.streams', img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
         torch.backends.cudnn.benchmark = True  # faster for fixed-size inference
         self.mode = 'stream'
         self.img_size = img_size
@@ -507,6 +584,12 @@ class LoadImagesAndLabels(Dataset):
         self.shapes = np.array(shapes)
         self.im_files = list(cache.keys())  # update
         self.label_files = img2label_paths(cache.keys())  # update
+        
+        # 22.12.19
+        # Check val json
+        if 'val' in prefix:
+            json_path = Path(self.label_files[0].rsplit('/labels', 1)[0]) / 'val.json'
+            create_val_json(self.labels, self.label_files, self.shapes, json_path, CATEGORIES)
 
         # Filter images
         if min_items:
@@ -537,8 +620,6 @@ class LoadImagesAndLabels(Dataset):
                     self.segments[i] = segment[j]
             if single_cls:  # single-class training, merge all classes into 0
                 self.labels[i][:, 0] = 0
-                if segment:
-                    self.segments[i][:, 0] = 0
 
         # Rectangular Training
         if self.rect:
@@ -665,7 +746,7 @@ class LoadImagesAndLabels(Dataset):
 
         else:
             # Load image
-            img, (h0, w0), (h, w) = self.load_image(index)
+            img, (h0, w0), (h, w) = self.load_image(index, augment=self.augment)
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
@@ -723,7 +804,10 @@ class LoadImagesAndLabels(Dataset):
 
         return torch.from_numpy(img), labels_out, self.im_files[index], shapes
 
-    def load_image(self, i):
+    def load_image(self,
+                   i,
+                   augment=False,
+                   random_crop=True):
         # Loads 1 image from dataset index 'i', returns (im, original hw, resized hw)
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i],
         if im is None:  # not cached in RAM
@@ -732,11 +816,30 @@ class LoadImagesAndLabels(Dataset):
             else:  # read image
                 im = cv2.imread(f)  # BGR
                 assert im is not None, f'Image Not Found {f}'
+                
+            # 23.02.02
+            # Apply RandomCroppedResize first
+            if augment and random_crop:
+                labels = self.labels[i].copy()
+                
+                # Turn labels into albumentations format
+                labels = yolo2alb(labels)
+                
+                # Apply RandomCroppedResize
+                t = RandomCroppedResize()
+                im, labels = t(im, labels)
+                
+                # Turn labels into yolo format
+                labels = alb2yolo(labels)
+
+                # Save new labels
+                self.labels[i] = labels
+
             h0, w0 = im.shape[:2]  # orig hw
             r = self.img_size / max(h0, w0)  # ratio
             if r != 1:  # if sizes are not equal
                 interp = cv2.INTER_LINEAR if (self.augment or r > 1) else cv2.INTER_AREA
-                im = cv2.resize(im, (int(w0 * r), int(h0 * r)), interpolation=interp)
+                im = cv2.resize(im, (math.ceil(w0 * r), math.ceil(h0 * r)), interpolation=interp)
             return im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
         return self.ims[i], self.im_hw0[i], self.im_hw[i]  # im, hw_original, hw_resized
 
@@ -755,7 +858,7 @@ class LoadImagesAndLabels(Dataset):
         random.shuffle(indices)
         for i, index in enumerate(indices):
             # Load image
-            img, _, (h, w) = self.load_image(index)
+            img, _, (h, w) = self.load_image(index, augment=self.augment)
 
             # place img in img4
             if i == 0:  # top left

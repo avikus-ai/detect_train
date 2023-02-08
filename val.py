@@ -40,7 +40,7 @@ from utils.callbacks import Callbacks
 from utils.dataloaders import create_dataloader
 from utils.general import (LOGGER, TQDM_BAR_FORMAT, Profile, check_dataset, check_img_size, check_requirements,
                            check_yaml, coco80_to_coco91_class, colorstr, increment_path, non_max_suppression,
-                           print_args, scale_boxes, xywh2xyxy, xyxy2xywh)
+                           print_args, scale_boxes, xywh2xyxy, xyxy2xywh, get_sliced_pixels, slice_img)
 from utils.metrics import ConfusionMatrix, ap_per_class, box_iou
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, smart_inference_mode
@@ -56,9 +56,10 @@ def save_one_txt(predn, save_conf, shape, file):
             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
 
-def save_one_json(predn, jdict, path, class_map):
+def save_one_json(predn, jdict, path, class_map, name2id):
     # Save one JSON result {"image_id": 42, "category_id": 18, "bbox": [258.15, 41.29, 348.26, 243.78], "score": 0.236}
-    image_id = int(path.stem) if path.stem.isnumeric() else path.stem
+    # image_id = int(path.stem) if path.stem.isnumeric() else path.stem
+    image_id = name2id[str(path).rsplit(".", 1)[0]]
     box = xyxy2xywh(predn[:, :4])  # xywh
     box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
     for p, b in zip(predn.tolist(), box.tolist()):
@@ -124,6 +125,8 @@ def run(
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
+        coco_eval=True,
+        slicing=False
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -153,6 +156,16 @@ def run(
 
         # Data
         data = check_dataset(data)  # check
+
+    # 23.01.09
+    # reads coco val json
+    if coco_eval:
+        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
+        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
+        with open(str(json_path), 'r') as f:
+            val_json = json.load(f)
+        assert val_json is not None, 'missing json file for coco map'
+        name2id = val_json.get('name2id')
 
     # Configure
     model.eval()
@@ -203,6 +216,12 @@ def run(
             im = im.half() if half else im.float()  # uint8 to fp16/32
             im /= 255  # 0 - 255 to 0.0 - 1.0
             nb, _, height, width = im.shape  # batch size, channels, height, width
+            
+        # If validating in slicing mode
+        if slicing:
+            sliced_pixels = get_sliced_pixels(width, height, 100, 100, 0.1, 0.1)
+            sliced_imgs = slice_img(im, sliced_pixels)
+            im = torch.stack(sliced_imgs)
 
         # Inference
         with dt[1]:
@@ -258,8 +277,8 @@ def run(
             # Save/log
             if save_txt:
                 save_one_txt(predn, save_conf, shape, file=save_dir / 'labels' / f'{path.stem}.txt')
-            if save_json:
-                save_one_json(predn, jdict, path, class_map)  # append to COCO-JSON dictionary
+            if coco_eval:
+                save_one_json(predn, jdict, path, class_map, name2id)  # append to COCO-JSON dictionary
             callbacks.run('on_val_image_end', pred, predn, path, names, im[si])
 
         # Plot images
@@ -294,36 +313,35 @@ def run(
         shape = (batch_size, 3, imgsz, imgsz)
         LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {shape}' % t)
 
-    # Plots
-    if plots:
-        confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
-        callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
-
     # Save JSON
-    if save_json and len(jdict):
+    if coco_eval:
         w = Path(weights[0] if isinstance(weights, list) else weights).stem if weights is not None else ''  # weights
-        anno_json = str(Path(data.get('path', '../coco')) / 'annotations/instances_val2017.json')  # annotations json
-        pred_json = str(save_dir / f"{w}_predictions.json")  # predictions json
+        anno_json = str(json_path)  # annotations
+        pred_json = str(save_dir / f"{w}_predictions.json")  # predictions
         LOGGER.info(f'\nEvaluating pycocotools mAP... saving {pred_json}...')
         with open(pred_json, 'w') as f:
             json.dump(jdict, f)
 
         try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-            check_requirements('pycocotools')
+            check_requirements('pycocotools>=2.0.6')
             from pycocotools.coco import COCO
             from pycocotools.cocoeval import COCOeval
 
             anno = COCO(anno_json)  # init annotations api
             pred = anno.loadRes(pred_json)  # init predictions api
             eval = COCOeval(anno, pred, 'bbox')
-            if is_coco:
-                eval.params.imgIds = [int(Path(x).stem) for x in dataloader.dataset.im_files]  # image IDs to evaluate
+            eval.params.imgIds = list(name2id.values())  # image IDs to evaluate
             eval.evaluate()
             eval.accumulate()
             eval.summarize()
             map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
         except Exception as e:
             LOGGER.info(f'pycocotools unable to run: {e}')
+
+    # Plots
+    confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
+    callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
+    # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
 
     # Return results
     model.float()  # for training
@@ -399,6 +417,8 @@ def main(opt):
                 np.savetxt(f, y, fmt='%10.4g')  # save
             os.system('zip -r study.zip study_*.txt')
             plot_val_study(x=x)  # plot
+        else:
+            raise NotImplementedError(f'--task {opt.task} not in ("train", "val", "test", "speed", "study")')
 
 
 if __name__ == "__main__":
