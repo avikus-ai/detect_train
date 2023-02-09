@@ -113,6 +113,14 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
     names = {0: 'item'} if single_cls and len(data_dict['names']) != 1 else data_dict['names']  # class names
     is_coco = isinstance(val_path, str) and val_path.endswith('coco/val2017.txt')  # COCO dataset
+    
+    # 23.02.09
+    # Creating a variable that contains class names for coco eval json
+    CATEGORIES = [{
+        'id': idx,
+        'name': v,
+        'supercategory': ''
+    } for idx, v in enumerate(data_dict.get('names').values())]
 
     # Model
     check_suffix(weights, '.pt')  # check weights
@@ -217,7 +225,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                                        rank=-1,
                                        workers=workers * 2,
                                        pad=0.5,
-                                       prefix=colorstr('val: '))[0]
+                                       prefix=colorstr('val: '),
+                                       coco_eval=coco_eval)[0]
 
         if not resume:
             if not opt.noautoanchor:
