@@ -121,6 +121,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         'name': v,
         'supercategory': ''
     } for idx, v in enumerate(data_dict.get('names').values())]
+    
+    # print(CATEGORIES)
 
     # Model
     check_suffix(weights, '.pt')  # check weights
@@ -226,7 +228,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                                        workers=workers * 2,
                                        pad=0.5,
                                        prefix=colorstr('val: '),
-                                       coco_eval=coco_eval)[0]
+                                       coco_eval=coco_eval,
+                                       categories=CATEGORIES)[0]
 
         if not resume:
             if not opt.noautoanchor:
