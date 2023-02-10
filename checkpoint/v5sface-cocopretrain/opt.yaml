@@ -1,6 +1,6 @@
 weights: ''
 cfg: models/yolov5s_face.yaml
-data: /home/yjyou/workspace/detect_train/data/coco.yaml
+data: /home/yjyou/workspace/detect_train/data/coco-cocoapi.yaml
 hyp:
   lr0: 0.01
   lrf: 0.01
@@ -65,4 +65,5 @@ entity: null
 upload_dataset: false
 bbox_interval: -1
 artifact_alias: latest
-save_dir: HiNAS_PRETRAINED/yolov5sface-coco-640-low2
+stop_coco_eval: false
+save_dir: HiNAS_PRETRAINED/yolov5sface-coco-640-low4
