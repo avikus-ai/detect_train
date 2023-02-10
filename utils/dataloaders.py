@@ -44,13 +44,6 @@ LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable
 RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
 
-CATEGORIES = [
-    {
-        "id": 0,
-        "name": "Vessel",
-        "supercategory": ""
-    }
-]
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
@@ -190,6 +183,8 @@ def create_dataloader(path,
                       prefix='',
                       shuffle=False,
                       seed=0,
+                      coco_eval=False,
+                      categories=None,
                       slicing=False):
     if rect and shuffle:
         LOGGER.warning('WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False')
@@ -207,7 +202,9 @@ def create_dataloader(path,
             stride=int(stride),
             pad=pad,
             image_weights=image_weights,
-            prefix=prefix)
+            prefix=prefix,
+            coco_eval=coco_eval,
+            categories=categories)
 
     batch_size = min(batch_size, len(dataset))
     nd = torch.cuda.device_count()  # number of CUDA devices
@@ -523,7 +520,9 @@ class LoadImagesAndLabels(Dataset):
                  stride=32,
                  pad=0.0,
                  min_items=0,
-                 prefix=''):
+                 prefix='',
+                 coco_eval=False,
+                 categories=None):
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
@@ -587,9 +586,9 @@ class LoadImagesAndLabels(Dataset):
         
         # 22.12.19
         # Check val json
-        if 'val' in prefix:
+        if 'val' in prefix and coco_eval:
             json_path = Path(self.label_files[0].rsplit('/labels', 1)[0]) / 'val.json'
-            create_val_json(self.labels, self.label_files, self.shapes, json_path, CATEGORIES)
+            create_val_json(self.labels, self.label_files, self.shapes, json_path, categories)
 
         # Filter images
         if min_items:

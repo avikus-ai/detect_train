@@ -156,6 +156,13 @@ def run(
 
         # Data
         data = check_dataset(data)  # check
+        print(data)
+        
+        CATEGORIES = [{
+            'id': idx,
+            'name': v,
+            'supercategory': ''
+        } for idx, v in enumerate(data.get('names').values())]
 
     # 23.01.09
     # reads coco val json
