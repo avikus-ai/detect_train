@@ -945,18 +945,6 @@ class LoadImagesAndLabels(Dataset):
                 image = np.squeeze(image,axis=0)
                 image /= 255
                 img = image
-            ###########################################################################
-            print("\n##########################################################################")
-            img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-            img = torch.from_numpy(img.copy())
-            # img = torchvision.transforms.AutoAugment()(img)
-            # img = torchvision.transforms.AugMix()(img)
-            # plot_image(img,labels)
-            print(torchvision.transforms.ToPILImage()((img)).show())
-            print(labels[:,0]) # class labels
-            print("##########################################################################")
-            exit()
-            # ###########################################################################
 
         labels_out = torch.zeros((nl, 6))
         if nl:
