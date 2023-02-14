@@ -792,6 +792,13 @@ class LoadImagesAndLabels(Dataset):
             labels[:, 1:5] = xyxy2xywhn(labels[:, 1:5], w=img.shape[1], h=img.shape[0], clip=True, eps=1E-3)
 
         if self.augment:
+          # 23.02.10 -> D.W.Shim
+            # Data Augmentation
+            # 3 images for augmix
+            img1, _ = self.albumentations_augmix(img, labels)
+            img2, _ = self.albumentations_augmix(img, labels)
+            img3, _ = self.albumentations_augmix(img, labels)
+            
             # Albumentations
             img, labels = self.albumentations(img, labels)
             nl = len(labels)  # update after albumentations
@@ -810,13 +817,6 @@ class LoadImagesAndLabels(Dataset):
                 img = np.fliplr(img)
                 if nl:
                     labels[:, 1] = 1 - labels[:, 1]
-
-            # 23.02.10 -> D.W.Shim
-            # Data Augmentation
-            # 3 images for augmix
-            img1, _ = self.albumentations_augmix(img, labels)
-            img2, _ = self.albumentations_augmix(img, labels)
-            img3, _ = self.albumentations_augmix(img, labels)
 
             # Augmix
             if random.random() < hyp['augmix']:
