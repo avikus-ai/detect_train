@@ -1,8 +1,26 @@
+# train:
+#   - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221028/
+
+# val: 
+#   - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/busan_220525_departure/
+
+# nc: 4
+# names: ['Buoy', 'Boat', 'Channel Marker', 'Speed Warning Sign']
+
+
 train:
-  - /data/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221028/
-
+  # - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221026/
+  # - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221028/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/busan_220525_departure/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/incheon_220527_arriving/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/incheon_220527_canal_and_berth/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/KHOPE/images/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/YMwinner/images/
+  # - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/GORAE/images/221020/
+  
 val: 
-  - /data/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/HANNARA/images/busan_220525_departure/
+  - /data01/HiNAS-DATA/EO-DATA/SINGLE_CLASS_DATASET/YOUTUBE/images/
+  
 
-nc: 4
-names: ['Buoy', 'Boat', 'Channel Marker', 'Speed Warning Sign']
+nc: 1
+names: ['Vessel']

@@ -29,8 +29,8 @@ from PIL import ExifTags, Image, ImageOps
 from torch.utils.data import DataLoader, Dataset, dataloader, distributed
 from tqdm import tqdm
 
-from utils.augmentations import (Albumentations, augment_hsv, classify_albumentations, classify_transforms, copy_paste,
-                                 letterbox, mixup, random_perspective, RandomCroppedResize)
+from utils.augmentations import (Albumentations, Albumentations_augmix, augment_hsv, classify_albumentations, classify_transforms, copy_paste,
+                                 letterbox, mixup, random_perspective, RandomCroppedResize, cutout, cutmix, hide_patch, GridMask, A, bbox_ioa)
 from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, TQDM_BAR_FORMAT, check_dataset, check_requirements,
                            check_yaml, clean_str, cv2, is_colab, is_kaggle, segments2boxes, unzip_file, xyn2xy,
                            xywh2xyxy, xywhn2xyxy, xyxy2xywhn, yolo2alb, alb2yolo)
@@ -50,6 +50,24 @@ for orientation in ExifTags.TAGS.keys():
     if ExifTags.TAGS[orientation] == 'Orientation':
         break
 
+# 23.02.10 D.W.Shim
+def get_xy_cord(img_w, img_h, box):
+    box = box[1:]
+    min_x = (box[0] - box[2] / 2) * img_w
+    min_y = (box[1] - box[3] / 2) * img_h
+    width = box[2] * img_w
+    height = box[3] * img_h
+    max_x = min_x + width
+    max_y = min_y + height
+    if max_x > img_w:
+        max_x = img_w-1
+    if max_y > img_h:
+        max_y = img_h-1
+    if min_x < 0:
+        min_x = 0
+    if min_y < 0:
+        min_y = 0
+    return min_x, min_y, max_x, max_y
 
 def get_hash(paths):
     # Returns a single hash value of a list of paths (files or dirs)
@@ -533,6 +551,7 @@ class LoadImagesAndLabels(Dataset):
         self.stride = stride
         self.path = path
         self.albumentations = Albumentations(size=img_size) if augment else None
+        self.albumentations_augmix = Albumentations_augmix(hyp, size=img_size) if augment else None
 
         try:
             f = []  # image files
@@ -736,7 +755,10 @@ class LoadImagesAndLabels(Dataset):
         mosaic = self.mosaic and random.random() < hyp['mosaic']
         if mosaic:
             # Load mosaic
-            img, labels = self.load_mosaic(index)
+            if hyp['capmosaic']:
+                img, labels = self.load_mosaic_with_copy_and_paste(index, hyp=hyp)
+            else:
+                img, labels = self.load_mosaic(index)
             shapes = None
 
             # MixUp augmentation
@@ -789,9 +811,152 @@ class LoadImagesAndLabels(Dataset):
                 if nl:
                     labels[:, 1] = 1 - labels[:, 1]
 
+            # 23.02.10 -> D.W.Shim
+            # Data Augmentation
+            # 3 images for augmix
+            img1, _ = self.albumentations_augmix(img, labels)
+            img2, _ = self.albumentations_augmix(img, labels)
+            img3, _ = self.albumentations_augmix(img, labels)
+
+            # Augmix
+            if random.random() < hyp['augmix']:
+                # a = np.random.uniform(0,1)
+                # b = np.random.uniform(0,1-a)
+                # c = 1-b-a
+                dirichlet = np.random.dirichlet([1,1,1])
+                a = dirichlet[0]
+                b = dirichlet[1]
+                c = dirichlet[2] 
+                
+                img_aug = np.zeros(img.shape,dtype=np.uint8)
+                for i in range(3): img_aug[:,:,i] = (a*img1[:,:,i]) + (b*img2[:,:,i]) + (c*img3[:,:,i])
+                d = np.random.beta(1,1)
+                # d = np.random.uniform(0,1)
+                e = 1-d
+                for i in range(3): img[:,:,i] = (d*img[:,:,i]) + (e*img_aug[:,:,i])
+
             # Cutouts
-            # labels = cutout(img, labels, p=0.5)
-            # nl = len(labels)  # update after cutout
+            img, labels = cutout(img, labels, p=hyp['cutout']) # default p=0.5
+            nl = len(labels)  # update after cutout
+
+            # Hide and Seek
+            img = hide_patch(img, grid_s = [32], hide_p=hyp['hideseek']) # grid_s -> size of grid(list), hide_p -> p per grid
+
+            # bilateral filtering
+            if random.random() < hyp['bilateral']:
+                img = cv2.bilateralFilter(img,9,55,55)
+            ###########################################################################
+            # get random image for cutmix, mixup, copy&paste
+            new_indices = list(self.indices)
+            new_indices.remove(index)
+            new_index = random.choices(new_indices, k=1)[0]
+            img2, labels2 = self.load_new_image(new_index)
+
+            if not len(labels2):
+                while len(labels2):
+                    new_indices = list(self.indices)
+                    new_indices.remove(index)
+                    new_index = random.choices(new_indices, k=1)[0]
+                    img2, labels2 = self.load_new_image(new_index)
+
+            # Copy & Paste without mosaic
+            if random.random() < hyp['copyandpaste']:
+                if type(hyp['targetclass']) != str:
+                    if hyp['targetclass'] not in labels2[:, 0] or not len(labels2):
+                        while self.indices:
+                            new_indices = list(self.indices)
+                            new_indices.remove(index)
+                            new_index = random.choices(new_indices, k=1)[0]
+                            img2, labels2 = self.load_new_image(new_index)
+
+                            if hyp['targetclass'] in labels2[:, 0]:
+                                new_labels2 = []
+                                for o in range(len(labels2)):
+                                    # label scale check
+                                    width = labels2[o][-2] * img2.shape[1]
+                                    height = labels2[o][-1] * img2.shape[0]
+                                    if labels2[o, 0] == hyp['targetclass'] and width*height <= hyp['objscale']**2:
+                                        new_labels2.append(list(labels2[o]))
+
+                                if len(new_labels2) >= hyp['tarobjnum']: # when the length of target list is more than the number of target object 
+                                    labels2 = np.array(new_labels2)
+                                    break
+
+                for i in range(len(labels2)):
+                    if (labels2[i].shape[0]) != 0:
+                        min_x, min_y, max_x, max_y = get_xy_cord(img2.shape[1], img2.shape[0], labels2[i])
+                        width = labels2[i][-2] * img2.shape[1]
+                        height = labels2[i][-1] * img2.shape[0]
+
+                        # scale image
+                        if width*height < 32*32: div_scale = 0.2
+                        elif width*height >= 32*32 and width*height < 64*64: div_scale = 0.5
+                        elif width*height >= 64*64: div_scale = 3
+
+                        object_crop = img2[int(min_y) : int(max_y), int(min_x) : int(max_x)]
+                        object_crop_resized = cv2.resize(object_crop, dsize=(int(object_crop.shape[1]/div_scale), int(object_crop.shape[0]/div_scale)), interpolation=cv2.INTER_LANCZOS4)
+
+                        cropped_w = object_crop_resized.shape[1] # cropped object width
+                        cropped_h = object_crop_resized.shape[0] # cropped object height
+
+                        cropped_box = np.array([labels2[i][0], labels2[i][1], labels2[i][2], cropped_w/img.shape[1], cropped_h/img.shape[0]]) # original
+                        # cropped_x = random.uniform((cropped_w/img.shape[1])/2, 1-((cropped_w/img.shape[1])/2)) # random position
+                        # cropped_y = random.uniform((cropped_h/img.shape[0])/2, 1-((cropped_h/img.shape[0])/2)) # random position
+                        # cropped_box = np.array([labels2[i][0], cropped_x, cropped_y, (cropped_w/img.shape[1]), (cropped_h/img.shape[0])]) # random position
+
+                        cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y = get_xy_cord(img.shape[1], img.shape[0], cropped_box)
+
+                        if object_crop_resized.shape[0] != (int(cropped_max_y) - math.ceil(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.ceil(cropped_min_x)):
+                            object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.ceil(cropped_min_x)), int(cropped_max_y) - math.ceil(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
+                        
+                        if np.mean(img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)]) != 114 and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != 114:
+                            box = np.array([cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y], dtype=np.float32)
+                            ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+                            ioa_list = ioa < 0.1
+                            if ioa_list.sum() == len(ioa_list):
+                                img[math.ceil(cropped_min_y) : int(cropped_max_y), math.ceil(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                                labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
+
+            # Cutmix
+            img, labels = cutmix(img, labels, img2, p=hyp['cutmix']) # default p=0.5
+            nl = len(labels)  # update after cutout
+
+            # Mixup without mosaic
+            if random.random() < hyp['mixup'] and hyp['mosaic'] == 0 and len(labels) != 0:
+            # if random.random() < hyp['mixup'] and hyp['mosaic'] == 0 and labels.shape[0] != 0 and labels2.shape[0] != 0:
+                img, labels = mixup(img, labels, img2, labels2)
+                nl = len(labels)
+            
+            # grid mask  
+            if random.random() < hyp['gridmask']:
+                transforms_train = A.Compose([
+                    A.OneOf([
+                        GridMask(num_grid=hyp['gridnum'], rotate = random.randint(-15,15), mode=hyp['gridmode']),  
+                        # GridMask(num_grid=3, rotate = 15,mode=0),
+                        # GridMask(num_grid=3, mode=2),
+                    ], p=1)
+                ])              
+
+                # res = GridMask(num_grid=(3,7), p=1)(image=img)      
+                res = transforms_train(image=img)      
+                image = res['image'].astype(np.float32)
+                
+                image = image[np.newaxis, :, :]
+                image = np.squeeze(image,axis=0)
+                image /= 255
+                img = image
+            ###########################################################################
+            print("\n##########################################################################")
+            img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+            img = torch.from_numpy(img.copy())
+            # img = torchvision.transforms.AutoAugment()(img)
+            # img = torchvision.transforms.AugMix()(img)
+            # plot_image(img,labels)
+            print(torchvision.transforms.ToPILImage()((img)).show())
+            print(labels[:,0]) # class labels
+            print("##########################################################################")
+            exit()
+            # ###########################################################################
 
         labels_out = torch.zeros((nl, 6))
         if nl:
@@ -842,6 +1007,23 @@ class LoadImagesAndLabels(Dataset):
             return im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
         return self.ims[i], self.im_hw0[i], self.im_hw[i]  # im, hw_original, hw_resized
 
+    # 23.02.10 D.W.Shim
+    def load_new_image(self, new_index):
+        img2, (h02, w02), (h2, w2) = self.load_image(new_index, augment = False, random_crop = False)
+        # Letterbox
+        shape2 = self.batch_shapes[self.batch[new_index]] if self.rect else self.img_size  # final letterboxed shape
+        img2, ratio2, pad2 = letterbox(img2, shape2, auto=False, scaleup=self.augment,color=(114,114,114))
+        # shapes2 = (h02, w02), ((h2 / h02, w2 / w02), pad2)  # for COCO mAP rescaling
+        labels2 = self.labels[new_index].copy()
+        if labels2.size:  # normalized xywh to pixel xyxy format
+            labels2[:, 1:] = xywhn2xyxy(labels2[:, 1:], ratio2[0] * w2, ratio2[1] * h2, padw=pad2[0], padh=pad2[1])
+        nl2 = len(labels2)  # number of labels
+        if nl2:
+            labels2[:, 1:5] = xyxy2xywhn(labels2[:, 1:5], w=img2.shape[1], h=img2.shape[0], clip=True, eps=1E-3)
+
+        return img2, labels2
+    
+
     def cache_images_to_disk(self, i):
         # Saves an image as an *.npy file for faster loading
         f = self.npy_files[i]
@@ -857,7 +1039,7 @@ class LoadImagesAndLabels(Dataset):
         random.shuffle(indices)
         for i, index in enumerate(indices):
             # Load image
-            img, _, (h, w) = self.load_image(index, augment=self.augment)
+            img, _, (h, w) = self.load_image(index, augment=self.augment, random_crop = self.hyp['randcrop'])
 
             # place img in img4
             if i == 0:  # top left
@@ -880,6 +1062,134 @@ class LoadImagesAndLabels(Dataset):
 
             # Labels
             labels, segments = self.labels[index].copy(), self.segments[index].copy()
+            if labels.size:
+                labels[:, 1:] = xywhn2xyxy(labels[:, 1:], w, h, padw, padh)  # normalized xywh to pixel xyxy format
+                segments = [xyn2xy(x, w, h, padw, padh) for x in segments]
+            labels4.append(labels)
+            segments4.extend(segments)
+
+        # Concat/clip labels
+        labels4 = np.concatenate(labels4, 0)
+        for x in (labels4[:, 1:], *segments4):
+            np.clip(x, 0, 2 * s, out=x)  # clip when using random_perspective()
+        # img4, labels4 = replicate(img4, labels4)  # replicate
+
+        # Augment
+        img4, labels4, segments4 = copy_paste(img4, labels4, segments4, p=self.hyp['copy_paste'])
+        img4, labels4 = random_perspective(img4,
+                                           labels4,
+                                           segments4,
+                                           degrees=self.hyp['degrees'],
+                                           translate=self.hyp['translate'],
+                                           scale=self.hyp['scale'],
+                                           shear=self.hyp['shear'],
+                                           perspective=self.hyp['perspective'],
+                                           border=self.mosaic_border)  # border to remove
+
+        return img4, labels4
+    
+    # 23.02.10 D.W.Shim
+    def load_mosaic_with_copy_and_paste(self, index, hyp):
+        # YOLOv5 4-mosaic loader. Loads 1 image + 3 random images into a 4-image mosaic
+        labels4, segments4 = [], []
+        s = self.img_size
+        yc, xc = (int(random.uniform(-x, 2 * s + x)) for x in self.mosaic_border)  # mosaic center x, y
+        indices = [index] + random.choices(self.indices, k=3)  # 3 additional image indices
+        random.shuffle(indices)
+
+        for i, index in enumerate(indices, augment=self.augment, random_crop = False):
+            # Load image
+            img, _, (h, w) = self.load_image(index)
+            # Labels
+            labels, segments = self.labels[index].copy(), self.segments[index].copy()
+            ########################################################################
+            new_indices = list(self.indices)
+            new_indices.remove(index)
+            new_index = random.choices(new_indices, k=1)[0]
+            img2, labels2 = self.load_new_image(new_index)
+
+            ## wanted class label
+            if type(hyp['targetclass']) != str:
+                if hyp['targetclass'] not in labels2[:, 0] or not len(labels2):
+                    while self.indices:
+                        new_indices = list(self.indices)
+                        new_indices.remove(index)
+                        new_index = random.choices(new_indices, k=1)[0]
+                        img2, labels2 = self.load_new_image(new_index)
+
+                        if hyp['targetclass'] in labels2[:, 0]:
+                            new_labels2 = []
+                            for o in range(len(labels2)):
+                                # label scale check
+                                width = labels2[o][-2] * img2.shape[1]
+                                height = labels2[o][-1] * img2.shape[0]
+                                if labels2[o, 0] == hyp['targetclass'] and width*height <= hyp['objscale']**2:
+                                    new_labels2.append(list(labels2[o]))
+
+                            if len(new_labels2) >= hyp['tarobjnum']: # when the length of target list is more than the number of target object 
+                                labels2 = np.array(new_labels2)
+                                break
+            
+            #########################################################################
+            for p in range(len(labels2)):
+                # box = labels[i]
+                if (labels2[p].shape[0]) != 0:
+                    min_x, min_y, max_x, max_y = get_xy_cord(img2.shape[1], img2.shape[0], labels2[p])
+                    width = labels2[p][-2] * img2.shape[1]
+                    height = labels2[p][-1] * img2.shape[0]
+
+                    if width*height < 32*32: div_scale = 0.2
+                    elif width*height >= 32*32 and width*height < 64*64: div_scale = 0.5
+                    elif width*height >= 64*64: div_scale = 3
+
+                    object_crop = img2[int(min_y) : int(max_y), int(min_x) : int(max_x)]
+                    object_crop_resized = cv2.resize(object_crop, dsize=(int(object_crop.shape[1]/div_scale), int(object_crop.shape[0]/div_scale)), interpolation=cv2.INTER_LANCZOS4)
+                    
+                    cropped_w = object_crop_resized.shape[1] # cropped object width
+                    cropped_h = object_crop_resized.shape[0] # cropped object height
+
+                    cropped_box = np.array([labels2[p][0], labels2[p][1], labels2[p][2], cropped_w/img.shape[1], cropped_h/img.shape[0]]) # original
+                    # cropped_x = random.uniform((cropped_w/img.shape[1])/2, 1-((cropped_w/img.shape[1])/2)) # random position
+                    # cropped_y = random.uniform((cropped_h/img.shape[0])/2, 1-((cropped_h/img.shape[0])/2)) # random position
+                    # cropped_box = np.array([labels2[p][0], cropped_x, cropped_y, cropped_w/img.shape[1], cropped_h/img.shape[0]]) # random position
+
+                    cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y = get_xy_cord(img.shape[1], img.shape[0], cropped_box)
+
+                    if object_crop_resized.shape[0] != (int(cropped_max_y) - math.ceil(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.ceil(cropped_min_x)):
+                        object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.ceil(cropped_min_x)), int(cropped_max_y) - math.ceil(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
+
+                    # flip cropped image
+                    object_crop_resized = np.fliplr(object_crop_resized)
+
+                    # return unobscured labels
+                    if cropped_min_x != 0 and cropped_max_y != 0 and cropped_max_x != img.shape[1] - 1 and cropped_max_y != img.shape[0] - 1:
+                        box = np.array([cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y], dtype=np.float32)
+                        ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+                        ioa_list = ioa < 0.1
+                        if ioa_list.sum() == len(ioa_list):
+                            img[math.ceil(cropped_min_y) : int(cropped_max_y), math.ceil(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                            labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
+            #########################################################################
+
+            # place img in img4
+            if i == 0:  # top left
+                img4 = np.full((s * 2, s * 2, img.shape[2]), 114, dtype=np.uint8)  # base image with 4 tiles
+                x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc  # xmin, ymin, xmax, ymax (large image)
+                x1b, y1b, x2b, y2b = w - (x2a - x1a), h - (y2a - y1a), w, h  # xmin, ymin, xmax, ymax (small image)
+            elif i == 1:  # top right
+                x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, s * 2), yc
+                x1b, y1b, x2b, y2b = 0, h - (y2a - y1a), min(w, x2a - x1a), h
+            elif i == 2:  # bottom left
+                x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(s * 2, yc + h)
+                x1b, y1b, x2b, y2b = w - (x2a - x1a), 0, w, min(y2a - y1a, h)
+            elif i == 3:  # bottom right
+                x1a, y1a, x2a, y2a = xc, yc, min(xc + w, s * 2), min(s * 2, yc + h)
+                x1b, y1b, x2b, y2b = 0, 0, min(w, x2a - x1a), min(y2a - y1a, h)
+
+            img4[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]  # img4[ymin:ymax, xmin:xmax]
+            padw = x1a - x1b
+            padh = y1a - y1b
+
             if labels.size:
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], w, h, padw, padh)  # normalized xywh to pixel xyxy format
                 segments = [xyn2xy(x, w, h, padw, padh) for x in segments]
