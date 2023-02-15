@@ -806,7 +806,7 @@ class LoadImagesAndLabels(Dataset):
     def load_image(self,
                    i,
                    augment=False,
-                   random_crop=True):
+                   random_crop=False):
         # Loads 1 image from dataset index 'i', returns (im, original hw, resized hw)
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i],
         if im is None:  # not cached in RAM
