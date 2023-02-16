@@ -887,7 +887,11 @@ class LoadImagesAndLabels(Dataset):
                         min_x, min_y, max_x, max_y = get_xy_cord(img2.shape[1], img2.shape[0], labels2[i])
                         width = labels2[i][-2] * img2.shape[1]
                         height = labels2[i][-1] * img2.shape[0]
-
+                        
+                        # filterout too small object
+                        if width*height <= 4*4:
+                            continue 
+                            
                         # scale image
                         if width*height < 32*32: div_scale = 0.2
                         elif width*height >= 32*32 and width*height < 64*64: div_scale = 0.5
