@@ -1097,9 +1097,9 @@ class LoadImagesAndLabels(Dataset):
         indices = [index] + random.choices(self.indices, k=3)  # 3 additional image indices
         random.shuffle(indices)
 
-        for i, index in enumerate(indices, augment=self.augment, random_crop = False):
+        for i, index in enumerate(indices):
             # Load image
-            img, _, (h, w) = self.load_image(index)
+            img, _, (h, w) = self.load_image(index, augment=self.augment, random_crop = False)
             # Labels
             labels, segments = self.labels[index].copy(), self.segments[index].copy()
             ########################################################################
