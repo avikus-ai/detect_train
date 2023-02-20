@@ -888,9 +888,9 @@ class LoadImagesAndLabels(Dataset):
                         width = labels2[i][-2] * img2.shape[1]
                         height = labels2[i][-1] * img2.shape[0]
                         
-                        # filterout under 8*8 pixel objects
-                        if width*height <= 8*8:
-                            continue 
+#                         # filterout under 8*8 pixel objects
+#                         if width*height <= 8*8:
+#                             continue 
                             
                         # scale image
                         if width*height < 32*32: div_scale = 0.2
@@ -898,6 +898,8 @@ class LoadImagesAndLabels(Dataset):
                         elif width*height >= 64*64: div_scale = 3
 
                         object_crop = img2[int(min_y) : int(max_y), int(min_x) : int(max_x)]
+                        if object_crop.shape[0] == 0 or object_crop.shape[1] == 0:
+                            continue
                         object_crop_resized = cv2.resize(object_crop, dsize=(int(object_crop.shape[1]/div_scale), int(object_crop.shape[0]/div_scale)), interpolation=cv2.INTER_LANCZOS4)
 
                         cropped_w = object_crop_resized.shape[1] # cropped object width
