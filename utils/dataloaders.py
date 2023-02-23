@@ -905,6 +905,7 @@ class LoadImagesAndLabels(Dataset):
                         cropped_w = object_crop_resized.shape[1] # cropped object width
                         cropped_h = object_crop_resized.shape[0] # cropped object height
 
+                        # Original position or random position
                         cropped_box = np.array([labels2[i][0], labels2[i][1], labels2[i][2], cropped_w/img.shape[1], cropped_h/img.shape[0]]) # original
                         # cropped_x = random.uniform((cropped_w/img.shape[1])/2, 1-((cropped_w/img.shape[1])/2)) # random position
                         # cropped_y = random.uniform((cropped_h/img.shape[0])/2, 1-((cropped_h/img.shape[0])/2)) # random position
@@ -912,20 +913,20 @@ class LoadImagesAndLabels(Dataset):
 
                         cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y = get_xy_cord(img.shape[1], img.shape[0], cropped_box)
 
-                        if object_crop_resized.shape[0] != (int(cropped_max_y) - math.ceil(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.ceil(cropped_min_x)):
-                            object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.ceil(cropped_min_x)), int(cropped_max_y) - math.ceil(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
+                        if object_crop_resized.shape[0] != (int(cropped_max_y) - math.floor(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.floor(cropped_min_x)):
+                            object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.floor(cropped_min_x)), int(cropped_max_y) - math.floor(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
                         
 #                         if np.mean(img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)]) != 114 and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != 114:
-                          if np.mean(img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)]) != img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)][0] and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != img[int(cropped_max_y),int(cropped_max_x)][0]:
+                          if np.mean(img[math.floor(cropped_min_y),math.floor(cropped_min_x)]) != img[math.floor(cropped_min_y),math.floor(cropped_min_x)][0] and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != img[int(cropped_max_y),int(cropped_max_x)][0]:
                             if len(labels) != 0:
                                 box = np.array([cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y], dtype=np.float32)
                                 ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
                                 ioa_list = ioa < 0.1
                                 if ioa_list.sum() == len(ioa_list):
-                                    img[math.ceil(cropped_min_y) : int(cropped_max_y), math.ceil(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                                    img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
                                     labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
                             else:
-                                img[math.ceil(cropped_min_y) : int(cropped_max_y), math.ceil(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                                img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
                                 labels = np.expand_dims(cropped_box, 0)
                                 
                 nl = len(labels)
@@ -957,7 +958,7 @@ class LoadImagesAndLabels(Dataset):
                 image = image[np.newaxis, :, :]
                 image = np.squeeze(image,axis=0)
                 image /= 255
-                img = image
+#                 img = image
 
         labels_out = torch.zeros((nl, 6))
         if nl:
@@ -1139,9 +1140,9 @@ class LoadImagesAndLabels(Dataset):
                     width = labels2[p][-2] * img2.shape[1]
                     height = labels2[p][-1] * img2.shape[0]
                     
-                    # filterout under 8*8 pixel objects
-                    if width*height <= 8*8:
-                        continue 
+#                     # filterout under 8*8 pixel objects
+#                     if width*height <= 8*8:
+#                         continue 
 
                     if width*height < 32*32: div_scale = 0.2
                     elif width*height >= 32*32 and width*height < 64*64: div_scale = 0.5
@@ -1154,7 +1155,8 @@ class LoadImagesAndLabels(Dataset):
                     
                     cropped_w = object_crop_resized.shape[1] # cropped object width
                     cropped_h = object_crop_resized.shape[0] # cropped object height
-
+                    
+                    # Original position or random position
                     cropped_box = np.array([labels2[p][0], labels2[p][1], labels2[p][2], cropped_w/img.shape[1], cropped_h/img.shape[0]]) # original
                     # cropped_x = random.uniform((cropped_w/img.shape[1])/2, 1-((cropped_w/img.shape[1])/2)) # random position
                     # cropped_y = random.uniform((cropped_h/img.shape[0])/2, 1-((cropped_h/img.shape[0])/2)) # random position
@@ -1162,8 +1164,8 @@ class LoadImagesAndLabels(Dataset):
 
                     cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y = get_xy_cord(img.shape[1], img.shape[0], cropped_box)
 
-                    if object_crop_resized.shape[0] != (int(cropped_max_y) - math.ceil(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.ceil(cropped_min_x)):
-                        object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.ceil(cropped_min_x)), int(cropped_max_y) - math.ceil(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
+                    if object_crop_resized.shape[0] != (int(cropped_max_y) - math.floor(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.floor(cropped_min_x)):
+                        object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.floor(cropped_min_x)), int(cropped_max_y) - math.floor(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
 
                     # flip cropped image
                     object_crop_resized = np.fliplr(object_crop_resized)
@@ -1174,7 +1176,7 @@ class LoadImagesAndLabels(Dataset):
                         ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
                         ioa_list = ioa < 0.1
                         if ioa_list.sum() == len(ioa_list):
-                            img[math.ceil(cropped_min_y) : int(cropped_max_y), math.ceil(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                            img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
                             labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
             #########################################################################
 
