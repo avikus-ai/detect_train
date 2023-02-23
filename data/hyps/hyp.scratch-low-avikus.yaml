@@ -54,6 +54,7 @@ gridmode: 1 # 0: grid, 1: inverted, 2: Checked pattern
 
 # hide & seek
 hideseek: 0.0 # apply hide & seek augmentation -> probability per grid, p = 0.25 is recommended
+has_grid_s: [64] # list of grid size
 
 # copy&paste with mosaic (mosaic after copy & paste)
 capmosaic: False # copy & paste in mosaic -> True or False
