@@ -840,7 +840,7 @@ class LoadImagesAndLabels(Dataset):
             nl = len(labels)  # update after cutout
 
             # Hide and Seek
-            img = hide_patch(img, grid_s = [32], hide_p=hyp['hideseek']) # grid_s -> size of grid(list), hide_p -> p per grid
+            img = hide_patch(img, grid_s = hyp['has_grid_s'], hide_p=hyp['hideseek']) # grid_s -> size of grid(list), hide_p -> p per grid
 
             # bilateral filtering
             if random.random() < hyp['bilateral']:
