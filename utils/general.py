@@ -1141,11 +1141,15 @@ def yolo2alb(labels: np.ndarray) -> np.ndarray:
         return np.zeros((0, 5))
     
     out = np.zeros_like(labels)
+    
     out[:, 0] = labels[:, 0]
-    out[:, 1] = np.clip(labels[:, 1] - labels[:, 3] / 2, 0, 1)
-    out[:, 2] = np.clip(labels[:, 2] - labels[:, 4] / 2, 0, 1)
-    out[:, 3] = np.clip(labels[:, 1] + labels[:, 3] / 2, 0, 1)
-    out[:, 4] = np.clip(labels[:, 2] + labels[:, 4] / 2, 0, 1)
+    out[:, 1:3] = np.clip(labels[:, 1:3] - labels[:, 3:] / 2, 0, 1)
+    out[:, 3:] = np.clip(labels[:, 1:3] + labels[:, 3:] / 2, 0, 1)
+    
+    # out[:, 1] = np.clip(labels[:, 1] - labels[:, 3] / 2, 0, 1)
+    # out[:, 2] = np.clip(labels[:, 2] - labels[:, 4] / 2, 0, 1)
+    # out[:, 3] = np.clip(labels[:, 1] + labels[:, 3] / 2, 0, 1)
+    # out[:, 4] = np.clip(labels[:, 2] + labels[:, 4] / 2, 0, 1)
     
     return out
     
@@ -1155,17 +1159,46 @@ def alb2yolo(labels: np.ndarray) -> np.ndarray:
         return np.zeros((0, 5))
     
     out = np.zeros_like(labels)
+    w_h = np.clip(labels[:, 3:] - labels[:, 1:3], 0, 1)
+    
     out[:, 0] = labels[:, 0]
+    out[:, 1:3] = np.clip(labels[:, 1:3] + w_h / 2, 0, 1)
+    out[:, 3:] = w_h
     
-    width = np.clip(labels[:, 3] - labels[:, 1], 0, 1)
-    height = np.clip(labels[:, 4] - labels[:, 2], 0, 1)
+    # width = np.clip(labels[:, 3] - labels[:, 1], 0, 1)
+    # height = np.clip(labels[:, 4] - labels[:, 2], 0, 1)
     
-    out[:, 1] = np.clip(labels[:, 1] + width / 2, 0, 1)
-    out[:, 2] = np.clip(labels[:, 2] + height / 2, 0, 1)
-    out[:, 3] = width
-    out[:, 4] = height
+    # out[:, 1] = np.clip(labels[:, 1] + width / 2, 0, 1)
+    # out[:, 2] = np.clip(labels[:, 2] + height / 2, 0, 1)
+    # out[:, 3] = width
+    # out[:, 4] = height
     
     return out
+
+
+# 23.02.28
+# Normalize Images
+def avg_filter(prev_len: int,
+               prev_val: np.ndarray,
+               val: np.ndarray) -> np.ndarray:
+    
+    return prev_len / (prev_len + 1) * prev_val + 1 / (prev_len + 1) * val
+    
+    
+def get_images_stats(im_files: List[str]) -> List[np.ndarray]:
+    len_ = 0
+    pixel_means = np.zeros(3)
+    pixel_stds = np.zeros(3)
+    
+    for im_file in im_files:
+        img = cv2.imread(im_file) / 255.0 # BGR, HWC
+        pixel_mean = img.mean(axis=(0, 1))
+        pixel_std = img.std(axis=(0, 1))
+        pixel_means[:] = avg_filter(len_, pixel_means, pixel_mean)
+        pixel_stds[:] = avg_filter(len_, pixel_stds, pixel_std)
+        len_ += 1
+        
+    return pixel_means, pixel_stds
 
 
 def get_single_sliced_pixels(img_w: int,

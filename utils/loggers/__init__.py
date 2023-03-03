@@ -228,8 +228,8 @@ class Loggers():
                 size_plots = [f'val_{size}_ap50' for size in sizes]
                 for idx, cls_map in enumerate(ap50):
                     self.wandb.log({cls_plots[idx]: cls_map})
-                # for idx, size_map in enumerate(map_size):
-                #     self.wandb.log({size_plots[idx]: size_map})
+                for idx, size_map in enumerate(map_size):
+                    self.wandb.log({size_plots[idx]: size_map})
             if self.clearml:
                 self.clearml.log_debug_samples(files, title='Validation')
 
