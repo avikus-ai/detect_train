@@ -164,16 +164,6 @@ def run(
             'supercategory': ''
         } for idx, v in enumerate(data.get('names').values())]
 
-    # 23.01.09
-    # reads coco val json
-    if coco_eval:
-        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
-        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
-        with open(str(json_path), 'r') as f:
-            val_json = json.load(f)
-        assert val_json is not None, 'missing json file for coco map'
-        name2id = val_json.get('name2id')
-
     # Configure
     model.eval()
     cuda = device.type != 'cpu'
@@ -199,7 +189,19 @@ def run(
                                        pad=pad,
                                        rect=rect,
                                        workers=workers,
-                                       prefix=colorstr(f'{task}: '))[0]
+                                       prefix=colorstr(f'{task}: '),
+                                       coco_eval=coco_eval,
+                                       categories=CATEGORIES)[0]
+
+    # 23.01.09
+    # reads coco val json
+    if coco_eval:
+        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
+        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
+        with open(str(json_path), 'r') as f:
+            val_json = json.load(f)
+        assert val_json is not None, 'missing json file for coco map'
+        name2id = val_json.get('name2id')
 
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
