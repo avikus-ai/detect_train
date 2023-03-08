@@ -1,0 +1,23 @@
+path: /data/HiNAS-DATA/IR-DATA/DATASET/
+
+train:
+  - KHOPE/images # ir-00
+  - YMwinner/images # ir-01
+  - ccnuri/images # ir-02
+  - 2939/images # ir-03
+  - HANNARA/images/busan_220525_departure # ir-04
+  - HANNARA/images/incheon_220527_arriving # ir-04
+  - HANNARA/images/incheon_220527_canal_and_berth # ir-04
+  - GORAE/images/221020 # ir-05
+  # - GORAE/images/221026 # ir-05
+  - GORAE/images/221028 # ir-05
+
+val:
+  # - GORAE/images/221028 # ir-05
+  - GORAE/images/221026 # ir-05
+  # - GORAE/images/221020 # ir-05
+
+val_anno: /data/HiNAS-DATA/IR-DATA/DATASET/ir-gorae221026-val.json
+
+nc: 1
+names: ["vessel"]

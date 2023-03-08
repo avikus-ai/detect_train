@@ -1,0 +1,12 @@
+python3 train.py \
+--project HiNAS-IR \
+--name v5s_ir \
+--img_type ir \
+--data data/data-ir.yaml \
+--hyp data/hyps/hyp-ir.yaml \
+--cfg models/yolov5s-ir.yaml \
+--weights yolov5s.pt \
+--device 2,3 \
+--imgsz 320 \
+--epochs 80 \
+--batch-size 64
