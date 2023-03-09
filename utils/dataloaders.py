@@ -803,7 +803,7 @@ class LoadImagesAndLabels(Dataset):
 
         # Convert
         if self.img_type.lower() == 'ir':
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = np.expand_dims(img, 0)
         else:
             img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
