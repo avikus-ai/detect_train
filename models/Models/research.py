@@ -1,10 +1,6 @@
 import torch
-<<<<<<< HEAD
 from torch import nn
 
-=======
-import torch.nn as nn
->>>>>>> 508c80286871ecdc8f715e39ad7cfec3846d0575
 
 class ChannelAttentionModule(nn.Module):
     def __init__(self, c1, reduction=16):
