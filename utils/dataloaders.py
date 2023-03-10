@@ -916,18 +916,18 @@ class LoadImagesAndLabels(Dataset):
                         if object_crop_resized.shape[0] != (int(cropped_max_y) - math.floor(cropped_min_y)) or object_crop_resized.shape[1] != (int(cropped_max_x) - math.floor(cropped_min_x)):
                             object_crop_resized = cv2.resize(object_crop_resized, dsize=((int(cropped_max_x) - math.floor(cropped_min_x)), int(cropped_max_y) - math.floor(cropped_min_y)), interpolation=cv2.INTER_LANCZOS4)
                         
-#                         if np.mean(img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)]) != 114 and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != 114:
-                            if np.mean(img[math.floor(cropped_min_y),math.floor(cropped_min_x)]) != img[math.floor(cropped_min_y),math.floor(cropped_min_x)][0] and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != img[int(cropped_max_y),int(cropped_max_x)][0]:
-                                if len(labels) != 0:
-                                    box = np.array([cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y], dtype=np.float32)
-                                    ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
-                                    ioa_list = ioa < 0.1
-                                    if ioa_list.sum() == len(ioa_list):
-                                        img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
-                                        labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
-                                else:
+#                       if np.mean(img[math.ceil(cropped_min_y),math.ceil(cropped_min_x)]) != 114 and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != 114:
+                        if np.mean(img[math.floor(cropped_min_y),math.floor(cropped_min_x)]) != img[math.floor(cropped_min_y),math.floor(cropped_min_x)][0] and np.mean(img[int(cropped_max_y),int(cropped_max_x)]) != img[int(cropped_max_y),int(cropped_max_x)][0]:
+                            if len(labels) != 0:
+                                box = np.array([cropped_min_x, cropped_min_y, cropped_max_x, cropped_max_y], dtype=np.float32)
+                                ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+                                ioa_list = ioa < 0.1
+                                if ioa_list.sum() == len(ioa_list):
                                     img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
-                                    labels = np.expand_dims(cropped_box, 0)
+                                    labels = np.concatenate((labels, np.expand_dims(cropped_box, 0)), 0)
+                            else:
+                                img[math.floor(cropped_min_y) : int(cropped_max_y), math.floor(cropped_min_x) : int(cropped_max_x)] = object_crop_resized
+                                labels = np.expand_dims(cropped_box, 0)
                                 
                 nl = len(labels)
 
