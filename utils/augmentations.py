@@ -11,7 +11,8 @@ import numpy as np
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
-
+import albumentations as A
+from albumentations.core.transforms_interface import DualTransform
 from utils.general import LOGGER, check_version, colorstr, resample_segments, segment2box, xywhn2xyxy
 from utils.metrics import bbox_ioa
 
@@ -86,6 +87,227 @@ class RandomCroppedResize:
                 return t['image'], np.zeros((0, 5))
             t_im, t_label = t['image'], np.array([[c, *b] for c, b in zip(t['class_labels'], t['bboxes'])]) if len(t['bboxes']) else np.zeros((0, 5))
             return t_im, t_label
+
+# 23.02.10 -> D.W.Shim
+# Data Augmentations
+class Albumentations_augmix:
+    # YOLOv5 Albumentations class (optional, only used if package is installed)
+    def __init__(self, hyp, size=640):
+        self.transform = None
+        prefix = colorstr('albumentations: ')
+        try:
+            import albumentations as A
+            check_version(A.__version__, '1.0.3', hard=True)  # version requirement
+
+            T = [
+                A.ShiftScaleRotate(
+                    shift_limit=0.0625,
+                    scale_limit=0.1,
+                    rotate_limit=3,
+                    p=1.0),
+                    A.Posterize(p=1.0),
+                A.ChannelShuffle(p = 1.0),
+                A.ColorJitter(p=1.0),
+                # A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=1.0),
+                A.OneOf([
+                    A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=1.0),
+                    A.Blur(p=1.0),  # 기본 0.01
+                    A.MedianBlur(p=1.0),   # 기본 0.01
+                    A.ToGray(p=1.0),   # 기본 0.01
+                    A.CLAHE(p=1.0),    # 기본 0.01
+                    A.RandomBrightnessContrast(p=1.0),
+                    A.RandomGamma(p=1.0),
+                    A.Sharpen(p=1.0),
+                    ################################################################################
+                    A.GridDistortion(distort_limit=4*.075, always_apply=True, p=1.0), 
+                    # A.Rotate(limit = 90, interpolation = cv2.INTER_CUBIC, border_mode = cv2.BORDER_REPLICATE, p = 1.0),
+                    # A.RandomRain(brightness_coefficient=0.9, drop_width=1, blur_value=5, p=1.0), 
+                    # A.Affine(p=1.0),
+                    ################################################################################
+                    A.ImageCompression(quality_lower=75, p=1.0)
+                ],p = 1.0)
+                ]  # transforms
+
+            self.transform = A.Compose(T, bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
+
+            LOGGER.info(prefix + ', '.join(f'{x}'.replace('always_apply=False, ', '') for x in T if x.p))
+        except ImportError:  # package not installed, skip
+            pass
+        except Exception as e:
+            LOGGER.info(f'{prefix}{e}')
+
+    def __call__(self, im, labels, p=1.0):
+        if self.transform and random.random() < p:
+            new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed 
+            im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
+        return im, labels
+    
+def cutout(im, labels, p=0.5):
+    # Applies image cutout augmentation https://arxiv.org/abs/1708.04552
+    if random.random() < p:
+        h, w = im.shape[:2]
+        scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction = s31
+        # scales = [1] # s1
+
+        for s in scales:
+            mask_h = random.randint(1, int(h * s))  # create random masks
+            mask_w = random.randint(1, int(w * s))
+
+            # box
+            xmin = max(0, random.randint(0, w) - mask_w // 2)
+            ymin = max(0, random.randint(0, h) - mask_h // 2)
+            xmax = min(w, xmin + mask_w)
+            ymax = min(h, ymin + mask_h)
+
+            # apply random color mask
+            im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)] # option 1 = default
+            # im[ymin:ymax, xmin:xmax] = 0 # option2
+
+            # return unobscured labels
+            if len(labels) and s > 0.03:
+                box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+                ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+                labels = labels[ioa < 0.60]  # remove >60% obscured labels
+
+    return im, labels
+
+def cutmix(im, labels, im2, p=0.5):
+    # Applies image cutmix augmentation
+    if random.random() < p:
+        h, w = im.shape[:2]
+        h2,w2 = im2.shape[:2]
+
+        # adjust scales
+        scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction
+        # scales = [1]
+
+        for s in scales:
+            mask_h = random.randint(1, int(h * s))  # create random masks
+            mask_w = random.randint(1, int(w * s))
+
+            # box
+            xmin = max(0, random.randint(0, w) - mask_w // 2)
+            ymin = max(0, random.randint(0, h) - mask_h // 2)
+            xmax = min(w, xmin + mask_w)
+            ymax = min(h, ymin + mask_h)
+
+            # apply random color mask
+            # im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)] # random color -> cutout
+
+            # img_lr = np.fliplr(im) # apply filp lr
+            # img_ud = np.flipud(im) # apply filp ud
+            im[ymin:ymax, xmin:xmax] = im2[ymin:ymax, xmin:xmax] # random image -> cutmix
+            # im[ymin:ymax, xmin:xmax] = img_lr[ymin:ymax, xmin:xmax]
+            
+            # return unobscured labels
+            if len(labels) and s > 0.03:
+                box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+                ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+                labels = labels[ioa < 0.60]  # remove >60% obscured labels
+
+    return im, labels
+
+def hide_patch(img, grid_s, hide_p):
+    # get width and height of the image
+    s = img.shape
+    wd = s[0]
+    ht = s[1]
+
+    # possible grid size, 0 means no hiding
+    # grid_sizes=[0,16,32,44,56]
+    # grid_sizes=[44,56]
+    # grid_sizes=[64]
+    grid_sizes = grid_s
+    
+
+    # hiding probability per grid
+    # hide_prob = 0.5
+    # hide_prob = 0.0
+    # hide_prob = 0.25
+    hide_prob = hide_p
+ 
+    # randomly choose one grid size
+    grid_size= grid_sizes[random.randint(0,len(grid_sizes)-1)]
+
+    # hide the patches
+    if(grid_size != 0):
+         for x in range(0,wd,grid_size):
+             for y in range(0,ht,grid_size):
+                 x_end = min(wd, x+grid_size) 
+                 y_end = min(ht, y+grid_size)
+                 if(random.random() <=  hide_prob):
+                       img[x:x_end,y:y_end,:]=0
+
+    return img
+
+class GridMask(DualTransform):
+    def __init__(self, num_grid=3, fill_value=0, rotate=0, mode=0, always_apply=False, p=0.5):
+        super(GridMask, self).__init__(always_apply, p)
+        if isinstance(num_grid, int):
+            num_grid = (num_grid, num_grid)
+        if isinstance(rotate, int):
+            rotate = (-rotate, rotate)
+        self.num_grid = num_grid
+        self.fill_value = fill_value
+        self.rotate = rotate
+        self.mode = mode
+        self.masks = None
+        self.rand_h_max = []
+        self.rand_w_max = []
+
+    def init_masks(self, height, width):
+        if self.masks is None:
+            self.masks = []
+            n_masks = self.num_grid[1] - self.num_grid[0] + 1
+            for n, n_g in enumerate(range(self.num_grid[0], self.num_grid[1] + 1, 1)):
+                grid_h = height / n_g
+                grid_w = width / n_g
+                this_mask = np.ones((int((n_g + 1) * grid_h), int((n_g + 1) * grid_w))).astype(np.uint8)
+                for i in range(n_g + 1):
+                    for j in range(n_g + 1):
+                        this_mask[
+                             int(i * grid_h) : int(i * grid_h + grid_h / 2),
+                             int(j * grid_w) : int(j * grid_w + grid_w / 2)
+                        ] = self.fill_value
+                        if self.mode == 2:
+                            this_mask[
+                                 int(i * grid_h + grid_h / 2) : int(i * grid_h + grid_h),
+                                 int(j * grid_w + grid_w / 2) : int(j * grid_w + grid_w)
+                            ] = self.fill_value
+                
+                if self.mode == 1:
+                    this_mask = 1 - this_mask
+
+                self.masks.append(this_mask)
+                self.rand_h_max.append(grid_h)
+                self.rand_w_max.append(grid_w)
+
+    def apply(self, image, mask, rand_h, rand_w, angle, **params):
+        h, w = image.shape[:2]
+        mask = A.rotate(mask, angle) if self.rotate[1] > 0 else mask
+        mask = mask[:,:,np.newaxis] if image.ndim == 3 else mask
+        image *= mask[rand_h:rand_h+h, rand_w:rand_w+w].astype(image.dtype)
+        return image
+
+    def get_params_dependent_on_targets(self, params):
+        img = params['image']
+        height, width = img.shape[:2]
+        self.init_masks(height, width)
+
+        mid = np.random.randint(len(self.masks))
+        mask = self.masks[mid]
+        rand_h = np.random.randint(self.rand_h_max[mid])
+        rand_w = np.random.randint(self.rand_w_max[mid])
+        angle = np.random.randint(self.rotate[0], self.rotate[1]) if self.rotate[1] > 0 else 0
+
+        return {'mask': mask, 'rand_h': rand_h, 'rand_w': rand_w, 'angle': angle}
+
+    @property
+    def targets_as_params(self):
+        return ['image']
+
+    def get_transform_init_args_names(self):
+        return ('num_grid', 'fill_value', 'rotate', 'mode')
 
 
 def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False):
@@ -295,31 +517,31 @@ def copy_paste(im, labels, segments, p=0.5):
     return im, labels, segments
 
 
-def cutout(im, labels, p=0.5):
-    # Applies image cutout augmentation https://arxiv.org/abs/1708.04552
-    if random.random() < p:
-        h, w = im.shape[:2]
-        scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction
-        for s in scales:
-            mask_h = random.randint(1, int(h * s))  # create random masks
-            mask_w = random.randint(1, int(w * s))
+# def cutout(im, labels, p=0.5):
+#     # Applies image cutout augmentation https://arxiv.org/abs/1708.04552
+#     if random.random() < p:
+#         h, w = im.shape[:2]
+#         scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction
+#         for s in scales:
+#             mask_h = random.randint(1, int(h * s))  # create random masks
+#             mask_w = random.randint(1, int(w * s))
 
-            # box
-            xmin = max(0, random.randint(0, w) - mask_w // 2)
-            ymin = max(0, random.randint(0, h) - mask_h // 2)
-            xmax = min(w, xmin + mask_w)
-            ymax = min(h, ymin + mask_h)
+#             # box
+#             xmin = max(0, random.randint(0, w) - mask_w // 2)
+#             ymin = max(0, random.randint(0, h) - mask_h // 2)
+#             xmax = min(w, xmin + mask_w)
+#             ymax = min(h, ymin + mask_h)
 
-            # apply random color mask
-            im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
+#             # apply random color mask
+#             im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
 
-            # return unobscured labels
-            if len(labels) and s > 0.03:
-                box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
-                ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
-                labels = labels[ioa < 0.60]  # remove >60% obscured labels
+#             # return unobscured labels
+#             if len(labels) and s > 0.03:
+#                 box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+#                 ioa = bbox_ioa(box, xywhn2xyxy(labels[:, 1:5], w, h))  # intersection over area
+#                 labels = labels[ioa < 0.60]  # remove >60% obscured labels
 
-    return labels
+#     return labels
 
 
 def mixup(im, labels, im2, labels2):
