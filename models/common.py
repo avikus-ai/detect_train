@@ -33,6 +33,8 @@ from utils.general import (LOGGER, ROOT, Profile, check_requirements, check_suff
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import copy_attr, smart_inference_mode
 
+from models.Models.research import CBAM
+
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
     # Pad to 'same' shape outputs
@@ -314,7 +316,6 @@ class Concat(nn.Module):
 
 
 # Extra Modules
-
 class StemBlock(nn.Module):
     def __init__(self, c1, c2, k=3, s=2, p=None, g=1, act=True):
         super().__init__()

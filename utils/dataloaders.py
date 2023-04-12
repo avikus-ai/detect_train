@@ -203,7 +203,8 @@ def create_dataloader(path,
                       seed=0,
                       coco_eval=False,
                       categories=None,
-                      slicing=False):
+                      slicing=False,
+                      img_type=''):
     if rect and shuffle:
         LOGGER.warning('WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False')
         shuffle = False
@@ -222,7 +223,8 @@ def create_dataloader(path,
             image_weights=image_weights,
             prefix=prefix,
             coco_eval=coco_eval,
-            categories=categories)
+            categories=categories,
+            img_type=img_type)
 
     batch_size = min(batch_size, len(dataset))
     nd = torch.cuda.device_count()  # number of CUDA devices
@@ -540,7 +542,8 @@ class LoadImagesAndLabels(Dataset):
                  min_items=0,
                  prefix='',
                  coco_eval=False,
-                 categories=None):
+                 categories=None,
+                 img_type='eo'):
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
@@ -551,7 +554,10 @@ class LoadImagesAndLabels(Dataset):
         self.stride = stride
         self.path = path
         self.albumentations = Albumentations(size=img_size) if augment else None
+        # YOLOv5_data_augmentation
         self.albumentations_augmix = Albumentations_augmix(hyp, size=img_size) if augment else None
+        self.img_type = img_type
+        # master
 
         try:
             f = []  # image files
@@ -965,7 +971,11 @@ class LoadImagesAndLabels(Dataset):
             labels_out[:, 1:] = torch.from_numpy(labels)
 
         # Convert
-        img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        if self.img_type.lower() == 'ir':
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = np.expand_dims(img, 0)
+        else:
+            img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         img = np.ascontiguousarray(img)
 
         return torch.from_numpy(img), labels_out, self.im_files[index], shapes
@@ -973,7 +983,7 @@ class LoadImagesAndLabels(Dataset):
     def load_image(self,
                    i,
                    augment=False,
-                   random_crop=True):
+                   random_crop=False):
         # Loads 1 image from dataset index 'i', returns (im, original hw, resized hw)
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i],
         if im is None:  # not cached in RAM

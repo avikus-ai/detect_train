@@ -164,16 +164,6 @@ def run(
             'supercategory': ''
         } for idx, v in enumerate(data.get('names').values())]
 
-    # 23.01.09
-    # reads coco val json
-    if coco_eval:
-        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
-        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
-        with open(str(json_path), 'r') as f:
-            val_json = json.load(f)
-        assert val_json is not None, 'missing json file for coco map'
-        name2id = val_json.get('name2id')
-
     # Configure
     model.eval()
     cuda = device.type != 'cpu'
@@ -199,7 +189,19 @@ def run(
                                        pad=pad,
                                        rect=rect,
                                        workers=workers,
-                                       prefix=colorstr(f'{task}: '))[0]
+                                       prefix=colorstr(f'{task}: '),
+                                       coco_eval=coco_eval,
+                                       categories=CATEGORIES)[0]
+
+    # 23.01.09
+    # reads coco val json
+    if coco_eval:
+        data_dir = data.get('val')[0] if isinstance(data.get('val'), list) else data.get('val')
+        json_path = Path(data_dir.rsplit('/images', 1)[0]) / 'val.json'
+        with open(str(json_path), 'r') as f:
+            val_json = json.load(f)
+        assert val_json is not None, 'missing json file for coco map'
+        name2id = val_json.get('name2id')
 
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
@@ -347,8 +349,8 @@ def run(
 
     # Plots
     confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
-    callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
-    # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
+    # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
+    callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
 
     # Return results
     model.float()  # for training
@@ -363,8 +365,8 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
+    parser.add_argument('--data', type=str, default=ROOT / 'data/custom_coco.yaml', help='dataset.yaml path')
+    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'checkpoint/v5scbam-cocopretrain/weights/best.pt', help='model path(s)')
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.001, help='confidence threshold')
