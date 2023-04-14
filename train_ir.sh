@@ -1,12 +1,11 @@
 python3 train.py \
 --project HiNAS-IR \
---name v5s_ir \
+--name v5l_1280_FLIR \
 --img_type ir \
 --data data/data-ir.yaml \
---hyp data/hyps/hyp-ir.yaml \
---cfg models/yolov5s-ir.yaml \
---weights yolov5s.pt \
---device 2,3 \
---imgsz 320 \
---epochs 80 \
---batch-size 64
+--cfg models/yolov5l-ir.yaml \
+--weights yolov5l.pt \
+--device 0 \
+--imgsz 1280 \
+--epochs 100 \
+--batch-size 5
