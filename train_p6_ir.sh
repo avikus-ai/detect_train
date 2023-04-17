@@ -3,12 +3,12 @@
 python -m torch.distributed.run --nproc_per_node 2 \
 train.py \
 --project HiNAS-IR \
---name v5l_1280_FLIR \
+--name v5l6_1280_FLIR \
 --img_type ir \
 --hyp data/hyps/hyp-ir.yaml \
 --data data/data-ir.yaml \
---cfg models/yolov5l-ir.yaml \
---weights yolov5l.pt \
+--cfg models/yolov5l6-ir.yaml \
+--weights yolov5l6.pt \
 --device 0,1 \
 --imgsz 1280 \
 --epochs 100 \
