@@ -249,15 +249,23 @@ def parse_opt():
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     parser.add_argument('--vid-stride', type=int, default=1, help='video frame-rate stride')
+    
+    # @Author yyj
+    # @Date 23.04.20
+    # @Description: For draw ground truth
+    # parser.add_argument('--draw-gt', action='store_true', help='show ground truth results')
+    
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
     return opt
 
-
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
     
+    # @Author yyj
+    # @Date 23.04.20
+    # @Description: For multi-source, use Yaml file 
     if opt.source.endswith('yaml'):
         with open(opt.source, 'r') as file:
             yaml_data = yaml.safe_load(file)
