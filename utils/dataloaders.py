@@ -199,16 +199,17 @@ def create_separate_val_json(labels: List[np.ndarray],
     
     for file_path in label_files:
         # Extract the directory name
+        
         # Ex. 2023-EO_SINGLE_CLASS/flicker/labels/val/63315904_3bb403e18b_b.txt'
-        dir_name = file_path.split('/')[-4]
-        save_json_dir_path = '/'.join(file_path.split('/')[:-3])
+        # Result 2023-EO_SINGLE_CLASS/flicker
+        dir_name = file_path.split('/labels')[0]
         
         # Add the directory name to the set
         dir_names.add(dir_name)
-        save_json_dir_paths.add(save_json_dir_path)
+        save_json_dir_paths.add(dir_name)
     
     dir_name_dict = {dir_name: i for i, dir_name in enumerate(sorted(dir_names))}
-    save_json_dir_paths_dict = {save_json_dir_path: i for i, save_json_dir_path in enumerate(sorted(save_json_dir_paths, key=lambda x : x.split('/')[-1]))}
+    save_json_dir_paths_dict = {save_json_dir_path: i for i, save_json_dir_path in enumerate(sorted(save_json_dir_paths))}
     
     name2id = []
     images = []
@@ -222,8 +223,8 @@ def create_separate_val_json(labels: List[np.ndarray],
         label_id.append(0)
     
     for i, (label, label_file) in enumerate(zip(labels, label_files)):
-        dir_name = label_file.split('/')[-4]
-        
+        dir_name = label_file.split('/labels')[0]
+
         index = dir_name_dict[dir_name]
                 
         img_w, img_h = shapes[i].astype(float)
@@ -261,7 +262,6 @@ def create_separate_val_json(labels: List[np.ndarray],
         } for j, (cls_id, xx1, yy1, ww, hh) in enumerate(zip(cls_, x1, y1, w, h))]
 
         label_id[index] += label.shape[0]
-
     
     for save_json_dir_path_name, i in save_json_dir_paths_dict.items():
         json_path = os.path.join(save_json_dir_path_name, 'separate.json')

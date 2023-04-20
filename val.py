@@ -365,7 +365,7 @@ def run(
 
             separate_pred_json = str(Path(val_dir.rsplit('/images', 1)[0]) / 'predictions.json')
             LOGGER.info(f'\nEvaluating pycocotools mAP... saving {separate_pred_json}...')
-            LOGGER.info(f"======= {val_dir.split('/')[-3]} Images =======")
+            LOGGER.info(f"======= {val_dir.rsplit('/images', 1)[0]} Images =======")
             with open(separate_pred_json, 'w') as f:
                 json.dump(filtered_jdict, f)
                 
@@ -381,7 +381,9 @@ def run(
                 eval.evaluate()
                 eval.accumulate()
                 eval.summarize()
-                map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+                # update results (mAP@0.5:0.95, mAP@0.5)
+                LOGGER.info(f"mAP@0.5:0.95: {eval.stats[0]}")
+                LOGGER.info(f"mAP@0.5: {eval.stats[1]}")
             except Exception as e:
                 LOGGER.info(f'pycocotools unable to run: {e}')
             
