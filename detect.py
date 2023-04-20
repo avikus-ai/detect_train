@@ -36,6 +36,10 @@ from pathlib import Path
 
 import torch
 
+# @Author yyj
+# @Date 23.04.20
+import yaml
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -253,7 +257,24 @@ def parse_opt():
 
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
+    
+    if opt.source.endswith('yaml'):
+        with open(opt.source, 'r') as file:
+            yaml_data = yaml.safe_load(file)
+        detect_dirs = yaml_data.get('detect')
+        
+        for detect_dir in detect_dirs:
+            opt.source = detect_dir
+            opt.name = detect_dir.rsplit('/images', 1)[0]
+            
+            # if /root 
+            if opt.name[0] == '/':
+                opt.name = opt.name[1:]
+
+            run(**vars(opt))
+            
+    else:
+        run(**vars(opt))
 
 
 if __name__ == "__main__":
