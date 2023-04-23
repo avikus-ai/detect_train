@@ -67,7 +67,8 @@ train:
   - /data/2023-EO_SINGLE_CLASS_slicing/YMwinner/s1/images/
   - /data/2023-EO_SINGLE_CLASS_slicing/YMwinner/s2/images/
   - /data/2023-EO_SINGLE_CLASS_slicing/YMwinner/s3/images/
-  
+  - /data/2023-EO_SINGLE_CLASS_train/Extra_UnitTest/images/train/
+
 val: 
   - /data/2023-EO_SINGLE_CLASS_train/2939/images/val/
   - /data/2023-EO_SINGLE_CLASS_train/ccnuri/images/val/
