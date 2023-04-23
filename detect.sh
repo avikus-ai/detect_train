@@ -12,6 +12,6 @@ python detect.py \
     --imgsz \
     1280 \
     --conf-thres \
-    0.25 \
+    0.5 \
     --project \
     2023-EO-Detect
