@@ -1,16 +1,14 @@
 train:
-<<<<<<< HEAD
   - ../datasets/coco/images/train2017
-
 val: 
   - ../datasets/coco/images/val2017
 
-=======
-  - /data/MS-COCO/coco2017/images/train2017
-val:
-  - /data/MS-COCO/coco2017/images/val2017
-nc: 8
->>>>>>> 508c80286871ecdc8f715e39ad7cfec3846d0575
+# train:
+#   - /data/MS-COCO/coco2017/images/train2017
+# val:
+#   - /data/MS-COCO/coco2017/images/val2017
+
+nc: 80
 names:
   0: person
   1: bicycle
