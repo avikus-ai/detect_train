@@ -178,9 +178,15 @@ def run(
             ncm = model.model.nc
             assert ncm == nc, f'{weights} ({ncm} classes) trained on different --data than what you passed ({nc} ' \
                               f'classes). Pass correct combination of --weights and --data that are trained together.'
-        model.warmup(imgsz=(1 if pt else batch_size, 3, imgsz, imgsz))  # warmup
+        # @ Author yyj
+        # @ Date 23.04.26
+        # @ Description: Change COLOR channel to gray channel on warmup
+        model.warmup(imgsz=(1 if pt else batch_size, 1, imgsz, imgsz))  # warmup
         pad, rect = (0.0, False) if task == 'speed' else (0.5, pt)  # square inference for benchmarks
         task = task if task in ('train', 'val', 'test') else 'val'  # path to train/val/test images
+        # @ Author yyj
+        # @ Date 23.04.26
+        # @ Description: Enter img_type="ir" as a parameter directly
         dataloader = create_dataloader(data[task],
                                        imgsz,
                                        batch_size,
@@ -191,7 +197,8 @@ def run(
                                        workers=workers,
                                        prefix=colorstr(f'{task}: '),
                                        coco_eval=coco_eval,
-                                       categories=CATEGORIES)[0]
+                                       categories=CATEGORIES,
+                                       img_type="ir")[0]
 
     # 23.01.09
     # reads coco val json
@@ -318,8 +325,11 @@ def run(
 
     # Print speeds
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
+    # @ Author yyj
+    # @ Date 23.04.26
+    # @ Description: Change COLOR channel to gray channel on warmup
     if not training:
-        shape = (batch_size, 3, imgsz, imgsz)
+        shape = (batch_size, 1, imgsz, imgsz)
         LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {shape}' % t)
 
     # Save JSON
@@ -331,6 +341,7 @@ def run(
         with open(pred_json, 'w') as f:
             json.dump(jdict, f)
 
+        LOGGER.info(f'======= Total Images... =======')
         try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
             check_requirements('pycocotools>=2.0.6')
             from pycocotools.coco import COCO
@@ -346,6 +357,45 @@ def run(
             map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
         except Exception as e:
             LOGGER.info(f'pycocotools unable to run: {e}')
+            
+        # @ Author yyj
+        # @ Date 23.04.26 
+        val_dirs = data.get('val')
+        for val_dir in val_dirs:
+            # Ex. /.../2023-EO_SINGLE_CLASS/2939/images/val
+            separate_json_path = Path(val_dir.rsplit('/images', 1)[0]) / 'separate.json'
+            separate_anno_json = str(separate_json_path)
+
+            with open(separate_json_path) as f:
+                data = json.load(f)
+
+            # Get the values of the "name2id" dictionary key
+            name2id_values = list(data["name2id"].values())
+            filtered_jdict = [item for item in jdict if item['image_id'] in name2id_values]
+
+            separate_pred_json = str(Path(val_dir.rsplit('/images', 1)[0]) / 'predictions.json')
+            LOGGER.info(f'\nEvaluating pycocotools mAP... saving {separate_pred_json}...')
+            LOGGER.info(f"======= {val_dir.rsplit('/images', 1)[0]} Images =======")
+            with open(separate_pred_json, 'w') as f:
+                json.dump(filtered_jdict, f)
+
+            try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+                check_requirements('pycocotools>=2.0.6')
+                from pycocotools.coco import COCO
+                from pycocotools.cocoeval import COCOeval
+
+                anno = COCO(separate_anno_json)  # init annotations api
+                pred = anno.loadRes(separate_pred_json)  # init predictions api
+                eval = COCOeval(anno, pred, 'bbox')
+                eval.params.imgIds = list(name2id.values())  # image IDs to evaluate
+                eval.evaluate()
+                eval.accumulate()
+                eval.summarize()
+                # update results (mAP@0.5:0.95, mAP@0.5)
+                LOGGER.info(f"mAP@0.5:0.95: {eval.stats[0]}")
+                LOGGER.info(f"mAP@0.5: {eval.stats[1]}")
+            except Exception as e:
+                LOGGER.info(f'pycocotools unable to run: {e}')
 
     # Plots
     confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))

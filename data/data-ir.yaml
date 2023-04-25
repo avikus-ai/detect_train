@@ -1,8 +1,0 @@
-train:
-  - /data/HiNAS-DATA/FLIR/images/train
-
-val:
-  - /data/HiNAS-DATA/FLIR/images/val # ir-05
-
-nc: 5
-names: ['Person', 'Bicycles', 'Cars', 'Cats', 'Dogs', 'Other Vehicle']

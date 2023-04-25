@@ -121,8 +121,6 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         'name': v,
         'supercategory': ''
     } for idx, v in enumerate(data_dict.get('names').values())]
-    
-    # print(CATEGORIES)
 
     # Model
     check_suffix(weights, '.pt')  # check weights
@@ -492,7 +490,7 @@ def parse_opt(known=False):
     parser.add_argument('--bbox_interval', type=int, default=-1, help='Set bounding-box image logging interval')
     parser.add_argument('--artifact_alias', type=str, default='latest', help='Version of dataset artifact to use')
 
-    # Extra arguments
+    # Extra arguments (Custom avikus)
     parser.add_argument('--stop-coco-eval', action='store_false')
     parser.add_argument('--img_type', type=str, default='eo')
 

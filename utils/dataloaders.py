@@ -166,6 +166,101 @@ def create_val_json(labels: List[np.ndarray],
     print(f'create_val_json took {time.time() - func_start_t}')
 
 
+# yyj 
+# 23.04.26
+def create_separate_val_json(labels: List[np.ndarray],
+                            label_files: List[str],
+                            shapes: np.ndarray,
+                            categories: List[Dict]):
+
+    print("Enter function create_separate_val_json..")
+    func_start_t = time.time()
+    assert len(labels) == len(label_files), 'num labels and num label files do not match'
+
+    dir_names = set()
+    save_json_dir_paths = set()
+
+    for file_path in label_files:
+        # Extract the directory name
+
+        # Ex. 2023-EO_SINGLE_CLASS/flicker/labels/val/63315904_3bb403e18b_b.txt'
+        # Result 2023-EO_SINGLE_CLASS/flicker
+        dir_name = file_path.split('/labels')[0]
+
+        # Add the directory name to the set
+        dir_names.add(dir_name)
+        save_json_dir_paths.add(dir_name)
+
+    dir_name_dict = {dir_name: i for i, dir_name in enumerate(sorted(dir_names))}
+    save_json_dir_paths_dict = {save_json_dir_path: i for i, save_json_dir_path in enumerate(sorted(save_json_dir_paths))}
+
+    name2id = []
+    images = []
+    annotations = []
+    label_id = []
+
+    for i in range(len(dir_name_dict)):
+        name2id.append({})
+        images.append([])
+        annotations.append([]) 
+        label_id.append(0)
+
+    for i, (label, label_file) in enumerate(zip(labels, label_files)):
+        dir_name = label_file.split('/labels')[0]
+
+        index = dir_name_dict[dir_name]
+
+        img_w, img_h = shapes[i].astype(float)
+        l = np.zeros_like(label)
+        l[:, 0] = label[:, 0]
+        l[:, 1:4:2] = label[:, 1:4:2] * img_w
+        l[:, 2:5:2] = label[:, 2:5:2] * img_h
+        cls_, x, y, w, h = l.T.astype(float)
+
+        x1 = x - w / 2
+        y1 = y - h / 2
+
+        images[index].append({
+            'file_name': label_file,
+            'height': img_h,
+            'width': img_w,
+            'id': i
+        })
+
+        # name2id[str(Path(label_file).stem)] = i
+        name2id[index][label_file.replace('labels', 'images').rsplit(".", 1)[0]] = i
+
+        annotations[index] += [{
+            'area': ww * hh,
+            'bbox': [
+                xx1,
+                yy1,
+                ww,
+                hh
+            ],
+            'category_id': int(cls_id),
+            'id': label_id[index] + j,
+            'image_id': i,
+            'iscrowd': 0
+        } for j, (cls_id, xx1, yy1, ww, hh) in enumerate(zip(cls_, x1, y1, w, h))]
+
+        label_id[index] += label.shape[0]
+
+    for save_json_dir_path_name, i in save_json_dir_paths_dict.items():
+        json_path = os.path.join(save_json_dir_path_name, 'separate.json')
+
+        out = {
+            'name2id': name2id[i],
+            'images': images[i],
+            'annotations': annotations[i],
+            'categories': categories
+        }
+
+        with open(str(json_path), 'w') as f:
+            json.dump(out, f)
+
+    print(f'create_separate_val_json took {time.time() - func_start_t}')
+
 def create_dataloader(path,
                       imgsz,
                       batch_size,
@@ -592,7 +687,22 @@ class LoadImagesAndLabels(Dataset):
         # Check val json
         if 'val' in prefix and coco_eval:
             json_path = Path(self.label_files[0].rsplit('/labels', 1)[0]) / 'val.json'
+            
+            # categories
+            """
+            CATEGORIES = [{
+                'id': idx,
+                'name': v,
+                'supercategory': ''
+            } for idx, v in enumerate(data_dict.get('names').values())]
+            """
+            
             create_val_json(self.labels, self.label_files, self.shapes, json_path, categories)
+            
+            # 23.04.26
+            # @author yyj
+            # @description When there are multiple validation sets, separate them by folder to take mAP
+            create_separate_val_json(self.labels, self.label_files, self.shapes, categories) 
 
         # Filter images
         if min_items:

@@ -13,5 +13,9 @@ val:
   - /data/HiNAS-DATA/PROCESSED-IR-DATA/GORAE/images/221026/
   - /data/HiNAS-DATA/PROCESSED-IR-DATA/KHOPE/images/
 
+detect: 
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/GORAE/images/221026/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/KHOPE/images/
+
 nc: 1
 names: ['Vessel']
