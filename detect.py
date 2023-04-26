@@ -36,6 +36,10 @@ from pathlib import Path
 
 import torch
 
+# @Author yyj
+# @Date 23.04.26
+import yaml
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -112,7 +116,10 @@ def run(
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
-    model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
+    # @ Author yyj
+    # @ Date 23.04.26
+    # @ Description: Change COLOR channel to gray channel on warmup
+    model.warmup(imgsz=(1 if pt or model.triton else bs, 1, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
@@ -208,7 +215,10 @@ def run(
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+    # @ Author yyj
+    # @ Date 23.04.26
+    # @ Description: Change COLOR channel to gray channel on warmup
+    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 1, *imgsz)}' % t)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
@@ -253,7 +263,27 @@ def parse_opt():
 
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
+    
+    # @Author yyj
+    # @Date 23.04.26
+    # @Description: For multi-source, use Yaml file 
+    if opt.source.endswith('yaml'):
+        with open(opt.source, 'r') as file:
+            yaml_data = yaml.safe_load(file)
+        detect_dirs = yaml_data.get('detect')
+        
+        for detect_dir in detect_dirs:
+            opt.source = detect_dir
+            opt.name = detect_dir.rsplit('/images', 1)[0]
+            
+            # if /root 
+            if opt.name[0] == '/':
+                opt.name = opt.name[1:]
+
+            run(**vars(opt))
+            
+    else:
+        run(**vars(opt))
 
 
 if __name__ == "__main__":

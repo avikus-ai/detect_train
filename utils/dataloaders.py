@@ -474,13 +474,24 @@ class LoadImages:
             self.count += 1
             im0 = cv2.imread(path)  # BGR
             assert im0 is not None, f'Image Not Found {path}'
+            
+            # @ Author yyj
+            # @ Date 23.04.26
+            # @ Description: Change COLOR channel to gray channel on warmup
+            im0 = cv2.cvtColor(im0, cv2.COLOR_BGR2GRAY)
             s = f'image {self.count}/{self.nf} {path}: '
 
         if self.transforms:
             im = self.transforms(im0)  # transforms
         else:
             im = letterbox(im0, self.img_size, stride=self.stride, auto=self.auto)[0]  # padded resize
-            im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+            
+            # @ Author yyj
+            # @ Date 23.04.26
+            # @ Description: expand_dims for gray_image
+            im = np.expand_dims(im, axis=-1)
+            
+            im = im.transpose((2, 0, 1))# [::-1]  # HWC to CHW, BGR to RGB
             im = np.ascontiguousarray(im)  # contiguous
 
         return path, im, im0, self.cap, s
