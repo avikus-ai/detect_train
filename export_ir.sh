@@ -1,8 +1,14 @@
 #!/bin/bash
 python export.py \
-	--weights HiNAS-IR/v5l_1280_FLIR/weights/best.pt \
-	--include onnx \
-	--simplify \
-	--imgsz 1280 1280 \
-	--data data/data-ir.yaml \
-	--opset 16
+	--data \
+    data/data-ir-avikus.yaml \
+	--weights \
+	HiNAS-IR/v5l_1280_avikus/weights/best.pt \
+	--include \
+	onnx \
+	--imgsz \
+	704 1280 \
+	--opset \
+	16 \
+	--batch-size \
+	1
