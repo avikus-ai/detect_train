@@ -398,44 +398,49 @@ def run(
         except Exception as e:
             LOGGER.info(f'pycocotools unable to run: {e}')
         
+        
         # @ Author yyj
-        # @ Date 23.04.20 
-        val_dirs = data.get('val')
-        for val_dir in val_dirs:
-            # Ex. /.../2023-EO_SINGLE_CLASS/2939/images/val
-            separate_json_path = Path(val_dir.rsplit('/images', 1)[0]) / 'separate.json'
-            separate_anno_json = str(separate_json_path)
-            
-            with open(separate_json_path) as f:
-                data = json.load(f)
-
-            # Get the values of the "name2id" dictionary key
-            name2id_values = list(data["name2id"].values())
-            filtered_jdict = [item for item in jdict if item['image_id'] in name2id_values]
-
-            separate_pred_json = str(Path(val_dir.rsplit('/images', 1)[0]) / 'predictions.json')
-            LOGGER.info(f'\nEvaluating pycocotools mAP... saving {separate_pred_json}...')
-            LOGGER.info(f"======= {val_dir.rsplit('/images', 1)[0]} Images =======")
-            with open(separate_pred_json, 'w') as f:
-                json.dump(filtered_jdict, f)
+        # @ Date 23.05.03
+        # @ Description: Train time increases by increasing validation yaml size and calculating separate yaml
+        if not training:
+            # @ Author yyj
+            # @ Date 23.04.20 
+            val_dirs = data.get('val')
+            for val_dir in val_dirs:
+                # Ex. /.../2023-EO_SINGLE_CLASS/2939/images/val
+                separate_json_path = Path(val_dir.rsplit('/images', 1)[0]) / 'separate.json'
+                separate_anno_json = str(separate_json_path)
                 
-            try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-                check_requirements('pycocotools>=2.0.6')
-                from pycocotools.coco import COCO
-                from pycocotools.cocoeval import COCOeval
+                with open(separate_json_path) as f:
+                    data = json.load(f)
 
-                anno = COCO(separate_anno_json)  # init annotations api
-                pred = anno.loadRes(separate_pred_json)  # init predictions api
-                eval = COCOeval(anno, pred, 'bbox')
-                eval.params.imgIds = list(name2id.values())  # image IDs to evaluate
-                eval.evaluate()
-                eval.accumulate()
-                eval.summarize()
-                # update results (mAP@0.5:0.95, mAP@0.5)
-                LOGGER.info(f"mAP@0.5:0.95: {eval.stats[0]}")
-                LOGGER.info(f"mAP@0.5: {eval.stats[1]}")
-            except Exception as e:
-                LOGGER.info(f'pycocotools unable to run: {e}')
+                # Get the values of the "name2id" dictionary key
+                name2id_values = list(data["name2id"].values())
+                filtered_jdict = [item for item in jdict if item['image_id'] in name2id_values]
+
+                separate_pred_json = str(Path(val_dir.rsplit('/images', 1)[0]) / 'predictions.json')
+                LOGGER.info(f'\nEvaluating pycocotools mAP... saving {separate_pred_json}...')
+                LOGGER.info(f"======= {val_dir.rsplit('/images', 1)[0]} Images =======")
+                with open(separate_pred_json, 'w') as f:
+                    json.dump(filtered_jdict, f)
+                    
+                try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+                    check_requirements('pycocotools>=2.0.6')
+                    from pycocotools.coco import COCO
+                    from pycocotools.cocoeval import COCOeval
+
+                    anno = COCO(separate_anno_json)  # init annotations api
+                    pred = anno.loadRes(separate_pred_json)  # init predictions api
+                    eval = COCOeval(anno, pred, 'bbox')
+                    eval.params.imgIds = list(name2id.values())  # image IDs to evaluate
+                    eval.evaluate()
+                    eval.accumulate()
+                    eval.summarize()
+                    # update results (mAP@0.5:0.95, mAP@0.5)
+                    LOGGER.info(f"mAP@0.5:0.95: {eval.stats[0]}")
+                    LOGGER.info(f"mAP@0.5: {eval.stats[1]}")
+                except Exception as e:
+                    LOGGER.info(f'pycocotools unable to run: {e}')
             
 
     # Plots
