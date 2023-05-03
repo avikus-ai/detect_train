@@ -25,6 +25,7 @@ import os
 import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -42,9 +43,29 @@ from utils.general import (LOGGER, TQDM_BAR_FORMAT, Profile, check_dataset, chec
                            check_yaml, coco80_to_coco91_class, colorstr, increment_path, non_max_suppression,
                            print_args, scale_boxes, xywh2xyxy, xyxy2xywh, get_sliced_pixels, slice_img)
 from utils.metrics import ConfusionMatrix, ap_per_class, box_iou
-from utils.plots import output_to_target, plot_images, plot_val_study
+from utils.plots import Annotator, output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, smart_inference_mode
 
+
+class Colors:
+    # Ultralytics color palette https://ultralytics.com/
+    def __init__(self):
+        # hex = matplotlib.colors.TABLEAU_COLORS.values()
+        hexs = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
+                '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
+        self.palette = [self.hex2rgb(f'#{c}') for c in hexs]
+        self.n = len(self.palette)
+
+    def __call__(self, i, bgr=False):
+        c = self.palette[int(i) % self.n]
+        return (c[2], c[1], c[0]) if bgr else c
+
+    @staticmethod
+    def hex2rgb(h):  # rgb order (PIL)
+        return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
+    
+    
+colors = Colors()
 
 def save_one_txt(predn, save_conf, shape, file):
     # Save one txt result
@@ -81,6 +102,7 @@ def process_batch(detections, labels, iouv):
     correct = np.zeros((detections.shape[0], iouv.shape[0])).astype(bool)
     iou = box_iou(labels[:, 1:], detections[:, :4])
     correct_class = labels[:, 0:1] == detections[:, 5]
+    fn_idxs = None
     for i in range(len(iouv)):
         x = torch.where((iou >= iouv[i]) & correct_class)  # IoU > threshold and classes match
         if x[0].shape[0]:
@@ -91,7 +113,11 @@ def process_batch(detections, labels, iouv):
                 # matches = matches[matches[:, 2].argsort()[::-1]]
                 matches = matches[np.unique(matches[:, 0], return_index=True)[1]]
             correct[matches[:, 1].astype(int), i] = True
-    return torch.tensor(correct, dtype=torch.bool, device=iouv.device)
+            
+            if i == 0:  # iou@0.5
+                fn_idxs = [idx for idx in range(labels.shape[0]) if idx not in matches[:, 0].astype(int)]
+
+    return torch.tensor(correct, dtype=torch.bool, device=iouv.device), fn_idxs
 
 
 @smart_inference_mode()
@@ -124,8 +150,10 @@ def run(
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
+        # extra arguments
         coco_eval=True,
-        slicing=False
+        slicing=False,
+        draw_fns = False
 ):
     # Initialize/load model and set device
     training = model is not None
@@ -258,7 +286,7 @@ def run(
             path, shape = Path(paths[si]), shapes[si][0]
             correct = torch.zeros(npr, niou, dtype=torch.bool, device=device)  # init
             seen += 1
-
+            
             if npr == 0:
                 if nl:
                     stats.append((correct, *torch.zeros((2, 0), device=device), labels[:, 0]))
@@ -277,7 +305,29 @@ def run(
                 tbox = xywh2xyxy(labels[:, 1:5])  # target boxes
                 scale_boxes(im[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
                 labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
-                correct = process_batch(predn, labelsn, iouv)
+                correct, fn_idxs = process_batch(predn, labelsn, iouv)
+                
+                # 23.04.21
+                # 미탐 객체 로깅
+                if draw_fns:
+                    image_path = os.path.join('/data', str(path))
+                    im0 = cv2.imread(image_path)
+                    annotator = Annotator(im0, line_width=1, example=str(names))
+                    img_name =  Path(path).stem
+                    img_name_dir = save_dir / img_name
+                    if fn_idxs:
+                        img_name_dir.mkdir(exist_ok=True, parents=True) 
+                        for obj_idx, (cls_, *xyxy) in enumerate(reversed(labelsn[fn_idxs, :])):
+                            # 객체만 따로 저장
+                            x1, y1, x2, y2 = [int(elem + 0.5) for elem in xyxy]
+                            if (x2 - x1) > 30 or 'eo' in str(img_name_dir).lower():
+                                cv2.imwrite(img_name_dir / f'{obj_idx}.jpg', im0[y1:y2, x1:x2])
+                            c = int(cls_)
+                            annotator.box_label(xyxy, None, color=colors(c, True))
+                            
+                        im0 = annotator.result()
+                        cv2.imwrite(img_name_dir / f'{img_name}.jpg', im0)
+                
                 if plots:
                     confusion_matrix.process_batch(predn, labelsn)
             stats.append((correct, pred[:, 4], pred[:, 5], labels[:, 0]))  # (correct, conf, pcls, tcls)
@@ -428,6 +478,9 @@ def parse_opt():
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
+    # Extra arguments
+    parser.add_argument('--draw-fns', action='store_true')
+    
     opt = parser.parse_args()
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')
