@@ -4,9 +4,9 @@ python export.py \
     --data \
     data/eo-slicing.yaml \
     --imgsz \
-    960 1280 \
+    704 1280 \
     --weights \
-    Seaspan_project/v5sface_1280_wv5sface_mosaic1.0_slicing/weights/best.pt \
+    /data01/HiNAS-DATA/CV-MODEL/2023-EO-YOLOv5Face/best.pt \
     --batch-size \
     1 \
     --device \
@@ -14,4 +14,6 @@ python export.py \
     --include \
     onnx \
     --opset \
-    16
+    16 \
+    --simplify \
+    --inplace \
