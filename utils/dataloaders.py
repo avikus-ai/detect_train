@@ -706,7 +706,7 @@ class LoadImagesAndLabels(Dataset):
         # 22.12.19
         # Check val json
         if 'val' in prefix and coco_eval:
-            json_path = Path(self.label_files[0].rsplit('/labels', 1)[0]) / 'val.json'
+            json_path = Path(path[0].rsplit('images', 1)[0]) / 'val.json'
             # categories
             """
             CATEGORIES = [{
