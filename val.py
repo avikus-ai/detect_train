@@ -398,7 +398,14 @@ def run(
         except Exception as e:
             LOGGER.info(f'pycocotools unable to run: {e}')
         
-        
+        # @ Author yyj
+        # @ Date 23.05.06
+        # @ Description: Wrong size mAP in wandb. The reason is that it is overwritten by eval.stats[3:6], which is the result of separate mAP.
+        # Plots
+        confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
+        # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
+        callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
+            
         # @ Author yyj
         # @ Date 23.05.03
         # @ Description: Train time increases by increasing validation yaml size and calculating separate yaml
@@ -442,12 +449,6 @@ def run(
                 except Exception as e:
                     LOGGER.info(f'pycocotools unable to run: {e}')
             
-
-    # Plots
-    confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
-    # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
-    callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
-
     # Return results
     model.float()  # for training
     if not training:
