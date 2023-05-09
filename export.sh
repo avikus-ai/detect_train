@@ -14,6 +14,6 @@ python export.py \
     --include \
     onnx \
     --opset \
-    16 \
+    12 \
     --simplify \
     --inplace \
