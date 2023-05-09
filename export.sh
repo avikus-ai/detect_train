@@ -2,15 +2,15 @@
 
 python export.py \
     --data \
-    data/eo-slicing.yaml \
+    data/eo-slicing-batch02.yaml \
     --imgsz \
-    704 1280 \
+    544 960 \
     --weights \
-    /data01/HiNAS-DATA/CV-MODEL/2023-EO-YOLOv5Face/best.pt \
+    Seaspan/EO/seaspan_eo.pt \
     --batch-size \
-    1 \
+    4 \
     --device \
-    0 \
+    1 \
     --include \
     onnx \
     --opset \
