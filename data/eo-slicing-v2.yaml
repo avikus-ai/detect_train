@@ -65,7 +65,7 @@ val:
   - /data/batch01_new/SINGLE_CLASS_revised/GORAE/221026/images/val/
   - /data/batch01_new/SINGLE_CLASS_revised/GORAE/221028/images/val/
   - /data/batch01_new/SINGLE_CLASS_revised/hannara/busan/images/val/
-  - /data/batch01_new/SINGLE_CLASS_revised/hannara/incheon_arriving/labels/val/
+  - /data/batch01_new/SINGLE_CLASS_revised/hannara/incheon_arriving/images/val/
   - /data/batch01_new/SINGLE_CLASS_revised/hannara/incheon_berth/images/val/
   - /data/batch01_new/SINGLE_CLASS_revised/KHOPE/images/val/
   - /data/batch01_new/SINGLE_CLASS_revised/lvis_oid/images/val/
