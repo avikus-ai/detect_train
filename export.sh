@@ -8,7 +8,7 @@ python export.py \
     --weights \
     Seaspan/EO/seaspan_eo.pt \
     --batch-size \
-    4 \
+    5 \
     --device \
     1 \
     --include \
