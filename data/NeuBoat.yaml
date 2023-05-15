@@ -1,0 +1,26 @@
+train:
+  - /data/NeuBoat/Avikus/BUSAN/images/train
+  - /data/NeuBoat/Avikus/FLL/images/train
+  - /data/NeuBoat/Avikus/INCHEON/images/train
+  - /data/NeuBoat/Avikus/KIMPO/images/train
+  - /data/NeuBoat/Avikus/Wangsan/WANGSAN/images/train
+  - /data/NeuBoat/Open/flicker/images/train
+  - /data/NeuBoat/Open/lvis_oid/images/train
+  - /data/NeuBoat/Open/object365/images/train
+  - /data/NeuBoat/Open/flicker/images/train
+  - /data/NeuBoat/Open/YOUTUBE/images/train
+  
+val: 
+  - /data/NeuBoat/Avikus/BUSAN/images/val
+  - /data/NeuBoat/Avikus/FLL/images/train
+  - /data/NeuBoat/Avikus/INCHEON/images/val
+  - /data/NeuBoat/Avikus/KIMPO/images/val
+  - /data/NeuBoat/Avikus/Wangsan/WANGSAN/images/val
+  - /data/NeuBoat/Open/flicker/images/val
+  - /data/NeuBoat/Open/lvis_oid/images/val
+  - /data/NeuBoat/Open/object365/images/val
+  - /data/NeuBoat/Open/flicker/images/val
+  - /data/NeuBoat/Open/YOUTUBE/images/val
+
+nc: 4
+names: ['Buoy', 'Motor Boat', 'Channel Marker', 'Speed Warning Sign']
