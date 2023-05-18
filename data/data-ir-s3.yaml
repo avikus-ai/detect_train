@@ -1,0 +1,21 @@
+train:
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/2939/images/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/ccnuri/images/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/GORAE/images/221020/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/GORAE/images/221028/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/HANNARA/images/busan_220525_departure/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/HANNARA/images/incheon_220527_arriving/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/HANNARA/images/incheon_220527_canal_and_berth/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/MassMIND/images/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/YMwinner/images/
+  
+  
+val: 
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/GORAE/images/221026/
+  - /data/HiNAS-DATA/PROCESSED-IR-DATA/KHOPE/images/
+
+detect: 
+  - /home/yjyou/workspace/detect_train/uipa/
+
+nc: 1
+names: ['Vessel']

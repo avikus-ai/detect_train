@@ -152,6 +152,18 @@ def run(
 
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # im.jpg
+            
+            # Run inference
+            # @ Author yyj
+            # @ Date 23.05.17
+            # @ Description: To save the original image at the same time as save_txt for labeling
+            if save_txt:
+                save_orgimg_dir = save_dir / "images"
+                os.makedirs(save_orgimg_dir, exist_ok=True)
+                
+                save_orgimg_path = str(save_orgimg_dir / p.name)
+                cv2.imwrite(save_orgimg_path, im0s.copy() ) 
+            
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
             s += '%gx%g ' % im.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
