@@ -48,7 +48,6 @@ train:
   - /data/batch01_new/SINGLE_CLASS_sliced/YMwinner/s3/images/
   - /data/batch02_new/SINGLE_CLASS_revised/lvis_oid/images/train/
   - /data/batch02_new/SINGLE_CLASS_revised/seaship_smdplus/images/train/
-  - /data/EO_CopyPaste_Data2/images/
   - /data/S3/images/train/
   - /data/S3/S3_sliced/s1/images/
   - /data/S3/S3_sliced/s2/images/
