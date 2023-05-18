@@ -239,57 +239,57 @@ for file in file_list:
         if len(l1)>0:
             img = s1.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
-            cv2.imwrite(  '/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s1/images/' + img_file_name + '.jpg', img)
-            save_array_to_file(l1,'/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s1/labels/' + txt_file_name + '.txt')
+            img = 255*(img) 
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
+            cv2.imwrite(  '/data/' + save_folder + '/' + file + '/s1/images/' + img_file_name + '.jpg', img)
+            save_array_to_file(l1,'/data/' + save_folder + '/' + file + '/s1/labels/' + txt_file_name + '.txt')
         elif len(l1)==0:
-            back1_path = '/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s1/background/'
+            back1_path = '/data/' + save_folder + '/' + file + '/s1/background/'
             if not os.path.exists(back1_path):
                 os.makedirs(back1_path)
                 print('background folder made!')
 
             img = s1.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
+            img = 255*(img)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
             cv2.imwrite(back1_path + img_file_name + '.jpg', img)
 
         if len(l2)>0:
             img = s2.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
-            cv2.imwrite('/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s2/images/' + img_file_name + '.jpg', img)
-            save_array_to_file(l2,'/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s2/labels/' + txt_file_name + '.txt')
+            img = 255*(img) 
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
+            cv2.imwrite('/data/' + save_folder + '/' + file + '/s2/images/' + img_file_name + '.jpg', img)
+            save_array_to_file(l2,'/' + save_folder + '/' + file + '/s2/labels/' + txt_file_name + '.txt')
 
         elif len(l2)==0:
-            back2_path = '/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s2/background/'
+            back2_path = '/data/' + save_folder + '/' + file + '/s2/background/'
             if not os.path.exists(back2_path):
                 os.makedirs(back2_path)
                 print('background folder made!')
             img = s2.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
+            img = 255*(img) 
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
             cv2.imwrite(back2_path + img_file_name + '.jpg', img)
 
         if len(l3)>0:
             img = s3.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
-            cv2.imwrite('/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s3/images/' + img_file_name + '.jpg', img)
-            save_array_to_file(l3,'/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s3/labels/' + txt_file_name + '.txt')
+            img = 255*(img)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
+            cv2.imwrite('/data/' + save_folder + '/' + file + '/s3/images/' + img_file_name + '.jpg', img)
+            save_array_to_file(l3,'/data/' + save_folder + '/' + file + '/s3/labels/' + txt_file_name + '.txt')
 
         elif len(l3)==0:
-            back3_path = '/data/2023-EO_SINGLE_CLASS_slicing_revised/' + file + '/s3/background/'
+            back3_path = '/data/' + save_folder + '/' + file + '/s3/background/'
             if not os.path.exists(back3_path):
                 os.makedirs(back3_path)
                 print('background folder made!')
 
             img = s3.detach().cpu().numpy() # tensor -> numpy
             img = np.transpose(img, (1, 2, 0)) # [C,H,W] -> [H,W,C]
-            img = 255*(img) # *255 or IMAGENET denorm 방법
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # RGB 채널
+            img = 255*(img) 
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
             cv2.imwrite(back3_path + img_file_name + '.jpg', img)
