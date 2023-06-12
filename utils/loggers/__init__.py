@@ -68,6 +68,8 @@ class Loggers():
             'train/box_loss',
             'train/obj_loss',
             'train/cls_loss',  # train loss
+            'metrics/mAP_0.5_open',
+            'metrics/mAP_0.5_avikus',
             'metrics/precision',
             'metrics/recall',
             'metrics/mAP_0.5',
@@ -77,7 +79,7 @@ class Loggers():
             'val/cls_loss',  # val loss
             'x/lr0',
             'x/lr1',
-            'x/lr2']  # params
+            'x/lr2']  # params 
         self.best_keys = ['best/epoch', 'best/precision', 'best/recall', 'best/mAP_0.5', 'best/mAP_0.5:0.95']
         for k in LOGGERS:
             setattr(self, k, None)  # init empty logger dictionary
@@ -256,7 +258,7 @@ class Loggers():
 
         if self.wandb:
             if best_fitness == fi:
-                best_results = [epoch] + vals[3:7]
+                best_results = [epoch] + vals[3:9]
                 for i, name in enumerate(self.best_keys):
                     self.wandb.wandb_run.summary[name] = best_results[i]  # log best results in the summary
             self.wandb.log(x)
