@@ -1,9 +1,9 @@
 train:
-  - /workspace/Avikus/NeuBoat/Avikus/BUSAN/images/train
-  - /workspace/Avikus/NeuBoat/Avikus/FLL/images/train
-  - /workspace/Avikus/NeuBoat/Avikus/INCHEON/images/train
-  - /workspace/Avikus/NeuBoat/Avikus/KIMPO/images/train
-  - /workspace/Avikus/NeuBoat/Avikus/Wangsan/WANGSAN/images/train
+  - /workspace/Avikus/BUSAN/images/train
+  - /workspace/Avikus/FLL/images/train
+  - /workspace/Avikus/INCHEON/images/train
+  - /workspace/Avikus/KIMPO/images/train
+  - /workspace/Avikus/Wangsan/WANGSAN/images/train
   # - /workspace/Avikus/NeuBoat/Open/flicker/images/train
   # - /workspace/Avikus/NeuBoat/Open/lvis_oid/images/train
   # - /workspace/Avikus/NeuBoat/Open/object365/images/train
@@ -11,11 +11,11 @@ train:
   # - /workspace/Avikus/NeuBoat/Open/YOUTUBE/images/train
   
 val: 
-  - /workspace/Avikus/NeuBoat/Avikus/BUSAN/images/val
-  - /workspace/Avikus/NeuBoat/Avikus/FLL/images/train
-  - /workspace/Avikus/NeuBoat/Avikus/INCHEON/images/val
-  - /workspace/Avikus/NeuBoat/Avikus/KIMPO/images/val
-  - /workspace/Avikus/NeuBoat/Avikus/Wangsan/WANGSAN/images/val
+  - /workspace/Avikus/BUSAN/images/val
+  - /workspace/Avikus/FLL/images/train
+  - /workspace/Avikus/INCHEON/images/val
+  - /workspace/Avikus/KIMPO/images/val
+  - /workspace/Avikus/Wangsan/WANGSAN/images/val
   # - /workspace/Avikus/NeuBoat/Open/flicker/images/val
   # - /workspace/Avikus/NeuBoat/Open/lvis_oid/images/val
   # - /workspace/Avikus/NeuBoat/Open/object365/images/val
