@@ -1,0 +1,10 @@
+train:
+  - /data/NeuBoat-Seg/images/train
+  
+val: 
+  - /data/NeuBoat-Seg/images/val
+
+# Classes
+names:
+  0: boat
+  1: buoy
