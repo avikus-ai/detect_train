@@ -4,8 +4,12 @@ Purpose: segment가 포함된 모듈에 대해서, ROIAlign을 포함해서 onnx
 Author: youngjae.you
 Created Date: 2023.09.01
 Version: 1.0.0
+TensorRT Version: 8.5
+DeepStream Version: 6.2
 Reference(s):
     - [ROIAlign](https://github.com/NVIDIA/TensorRT/tree/release/8.6/plugin/roiAlignPlugin)
+    - [pyramidROIAlignPlugin](https://github.com/NVIDIA/TensorRT/tree/release/8.6/plugin/pyramidROIAlignPlugin)
+    - [Jetpack 5.1](https://developer.nvidia.com/embedded/jetpack-sdk-51)
     
 History:
     - 2023.09.01 최초 작성
