@@ -1,3 +1,17 @@
+"""
+----------------------------------------------------------------------------
+Filename: export_yoloV5_for_deepstream.py
+Path: export_yoloV5_for_deepstream.py
+Date: 09.06.2023
+Author: youngjae.you
+Purpose: Deepstream에 적용하기 위한 YOLOv5 모델을 ONNX 형식으로 변환하는 스크립트
+History:
+   - 23.09.06 사용법에 대한 주석 추가
+Usage:
+    - python export_yoloV5_for_deepstream.py --weights best.pt -s 544 960 --opset 12 --simplify --dynamic
+----------------------------------------------------------------------------
+"""
+
 import os
 import sys
 import argparse
