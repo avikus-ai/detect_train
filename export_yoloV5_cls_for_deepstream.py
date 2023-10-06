@@ -63,6 +63,13 @@ def main(args):
     device = select_device('cpu')
     model = attempt_load(args.weights, device=device)
 
+    # if len(model.names.keys()) > 0:
+    #     print('\nCreating labels.txt file')
+    #     f = open('labels_cls.txt', 'w')
+    #     for name in model.names.values():
+    #         f.write(name + '\n')
+    #     f.close()
+        
     model = nn.Sequential(model, ClassificationOutput())
 
     onnx_input_im = torch.zeros(args.batch, 3, *args.size).to(device)
@@ -79,7 +86,7 @@ def main(args):
 
     print('\nExporting the model to ONNX')
     torch.onnx.export(model, onnx_input_im, onnx_output_file, verbose=False, opset_version=args.opset,
-                      do_constant_folding=True, input_names=['input'], output_names=['outputs'],
+                      do_constant_folding=True, input_names=['input'], output_names=['output'],
                       dynamic_axes=dynamic_axes if args.dynamic else None)
 
     if args.simplify:
