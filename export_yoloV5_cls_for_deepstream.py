@@ -89,6 +89,11 @@ def main(args):
                       do_constant_folding=True, input_names=['input'], output_names=['output'],
                       dynamic_axes=dynamic_axes if args.dynamic else None)
 
+    # ONNX 모델 검증
+    print('Validating the ONNX model')
+    onnx_model = onnx.load(onnx_output_file)
+    onnx.checker.check_model(onnx_model, full_check=True) # full_check=True: 모든 문제를 검사
+    
     if args.simplify:
         print('Simplifying the ONNX model')
         import onnxsim
