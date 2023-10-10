@@ -1035,6 +1035,13 @@ def apply_classifier(x, model, img, im0):
     # Apply a second stage classifier to YOLO outputs
     # Example model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
     im0 = [im0] if isinstance(im0, np.ndarray) else im0
+    
+    # https://pytorch.org/vision/main/models/generated/torchvision.models.efficientnet_b0.html#torchvision.models.efficientnet_b0
+    # ImageNet normalization values
+    # device_of_model = next(model.parameters()).device
+    mean = torch.tensor([0.485, 0.456, 0.406]).to('cuda:0').view(1, 3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225]).to('cuda:0').view(1, 3, 1, 1)
+    
     for i, d in enumerate(x):  # per image
         if d is not None and len(d):
             d = d.clone()
@@ -1060,8 +1067,12 @@ def apply_classifier(x, model, img, im0):
                 im /= 255  # 0 - 255 to 0.0 - 1.0
                 ims.append(im)
 
-            pred_cls2 = model(torch.Tensor(ims).to(d.device)).argmax(1)  # classifier prediction
-            x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
+            ims_tensor = torch.Tensor(ims).to(d.device)
+            ims_tensor = (ims_tensor - mean) / std  # Normalization
+            pred_cls2 = model(ims_tensor).argmax(1)  # classifier prediction
+            
+            #print(pred_cls2)
+            # x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
 
     return x
 

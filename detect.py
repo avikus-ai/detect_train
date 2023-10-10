@@ -41,6 +41,8 @@ import torch
 # @Date 23.04.20
 import yaml
 
+import torchvision
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -52,7 +54,7 @@ from ultralytics.utils.plotting import Annotator, colors, save_one_box
 from models.common import DetectMultiBackend
 from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
-                           increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
+                           increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh, apply_classifier)
 from utils.torch_utils import select_device, smart_inference_mode
 
 
@@ -139,7 +141,9 @@ def run(
             pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
 
         # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+        # classifier_model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
+        # torch.Size([1, 3, 384, 640]) (1080, 1920, 3)
+        # pred = apply_classifier(pred, classifier_model, im, im0s)
 
         # Define the path for the CSV file
         csv_path = save_dir / 'predictions.csv'
