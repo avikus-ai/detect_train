@@ -3,7 +3,7 @@ train:
   - /workspace/data/Avikus/FLL/images/train
   - /workspace/data/Avikus/INCHEON/images/train
   - /workspace/data/Avikus/KIMPO/images/train
-  - /workspace/data/Avikus/Wangsan/WANGSAN/images/train
+  - /workspace/data/Avikus/Wangsan/images/train
   - /workspace/data/Avikus/NEW_BUSAN/images/train
   - /workspace/data/Avikus/NEW_WANGSAN/images/train
   - /workspace/data/Avikus/NEW_KIMPO/images/
@@ -20,7 +20,7 @@ val:
   - /workspace/data/Avikus/FLL/images/val
   - /workspace/data/Avikus/INCHEON/images/val
   - /workspace/data/Avikus/KIMPO/images/val
-  - /workspace/data/Avikus/Wangsan/WANGSAN/images/val
+  - /workspace/data/Avikus/Wangsan/images/val
   - /workspace/data/Avikus/NEW_BUSAN/images/val
   - /workspace/data/Avikus/NEW_WANGSAN/images/val
   - /workspace/data/Avikus/TAMPA/images/val
