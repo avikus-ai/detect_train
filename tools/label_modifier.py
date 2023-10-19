@@ -78,7 +78,7 @@ def modify_labels(label_dir: str,
     is_splitted: train, val로 나누어져 있는지 여부
     in_place: 기존 라벨 파일을 수정할지, 새로운 폴더에 저장할지 여부
     example:
-        label_dir = '/workspace/data/Avikus/TAMPA'
+        label_dir = '/workspace/data/Avikus/TAMPA/labels'
     """
     
     tasks = ['train', 'val']
@@ -130,5 +130,5 @@ if __name__ == '__main__':
     # top_dir = '/workspace/data/Avikus'
     # modify(top_dir)
 
-    # label_dir = '/data/NeuBoat/Avikus/NEW_KIMPO/labels'
-    # modify_labels(label_dir, is_splitted=True, in_place=False)
+    label_dir = '/data/NeuBoat/Avikus/NEW_KIMPO/labels'
+    modify_labels(label_dir, is_splitted=False, in_place=False)
