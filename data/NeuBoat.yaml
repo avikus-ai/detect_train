@@ -1,33 +1,34 @@
+path: /workspace/data
 train:
-  - /workspace/data/Avikus/BUSAN/images/train
-  - /workspace/data/Avikus/FLL/images/train
-  - /workspace/data/Avikus/INCHEON/images/train
-  - /workspace/data/Avikus/KIMPO/images/train
-  - /workspace/data/Avikus/Wangsan/images/train
-  - /workspace/data/Avikus/NEW_BUSAN/images/train
-  - /workspace/data/Avikus/NEW_WANGSAN/images/train
-  - /workspace/data/Avikus/NEW_KIMPO/images/
-  - /workspace/data/Avikus/TAMPA/images/train
-  - /workspace/data/Avikus/ibex/images
+  - Avikus/BUSAN/images/train
+  - Avikus/FLL/images/train
+  - Avikus/INCHEON/images/train
+  - Avikus/KIMPO/images/train
+  - Avikus/Wangsan/images/train
+  - Avikus/NEW_BUSAN/images/train
+  - Avikus/NEW_WANGSAN/images/train
+  - Avikus/NEW_KIMPO/images/
+  - Avikus/TAMPA/images/train
+  - Avikus/ibex/images
 
-  - /workspace/data/Open/flicker/images/train
-  - /workspace/data/Open/lvis_oid/images/train
-  - /workspace/data/Open/objects_365/images/train
-  - /workspace/data/Open/TAMPA_crawling/images
+  - Open/flicker/images/train
+  - Open/lvis_oid/images/train
+  - Open/objects_365/images/train
+  - Open/TAMPA_crawling/images
   
 val: 
-  - /workspace/data/Avikus/BUSAN/images/val
-  - /workspace/data/Avikus/FLL/images/val
-  - /workspace/data/Avikus/INCHEON/images/val
-  - /workspace/data/Avikus/KIMPO/images/val
-  - /workspace/data/Avikus/Wangsan/images/val
-  - /workspace/data/Avikus/NEW_BUSAN/images/val
-  - /workspace/data/Avikus/NEW_WANGSAN/images/val
-  - /workspace/data/Avikus/TAMPA/images/val
+  - Avikus/BUSAN/images/val
+  - Avikus/FLL/images/val
+  - Avikus/INCHEON/images/val
+  - Avikus/KIMPO/images/val
+  - Avikus/Wangsan/images/val
+  - Avikus/NEW_BUSAN/images/val
+  - Avikus/NEW_WANGSAN/images/val
+  - Avikus/TAMPA/images/val
 
-  - /workspace/data/Open/flicker/images/val
-  - /workspace/data/Open/lvis_oid/images/val
-  - /workspace/data/Open/objects_365/images/val
+  - Open/flicker/images/val
+  - Open/lvis_oid/images/val
+  - Open/objects_365/images/val
 
 nc: 6
 names: ['Person', 'Motor Boat', 'Jet Ski', 'Canoe', 'Buoy', 'Channel Marker']
