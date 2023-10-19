@@ -4,23 +4,30 @@ train:
   - /data/NeuBoat/Avikus/INCHEON/images/train
   - /data/NeuBoat/Avikus/KIMPO/images/train
   - /data/NeuBoat/Avikus/Wangsan/WANGSAN/images/train
+  - /data/NeuBoat/Avikus/NEW_BUSAN/images/train
+  - /data/NeuBoat/Avikus/NEW_WANGSAN/images/train
+  - /data/NeuBoat/Avikus/NEW_KIMPO/images/
+  - /data/NeuBoat/Avikus/TAMPA/images/train
+  - /data/NeuBoat/Avikus/ibex/images
+
   - /data/NeuBoat/Open/flicker/images/train
   - /data/NeuBoat/Open/lvis_oid/images/train
-  - /data/NeuBoat/Open/object365/images/train
-  - /data/NeuBoat/Open/flicker/images/train
-  - /data/NeuBoat/Open/YOUTUBE/images/train
+  - /data/NeuBoat/Open/objects_365/images/train
+  - /data/NeuBoat/Open/TAMPA_crawling/images
   
 val: 
   - /data/NeuBoat/Avikus/BUSAN/images/val
-  - /data/NeuBoat/Avikus/FLL/images/train
+  - /data/NeuBoat/Avikus/FLL/images/val
   - /data/NeuBoat/Avikus/INCHEON/images/val
   - /data/NeuBoat/Avikus/KIMPO/images/val
   - /data/NeuBoat/Avikus/Wangsan/WANGSAN/images/val
+  - /data/NeuBoat/Avikus/NEW_BUSAN/images/val
+  - /data/NeuBoat/Avikus/NEW_WANGSAN/images/val
+  - /data/NeuBoat/Avikus/TAMPA/images/val
+
   - /data/NeuBoat/Open/flicker/images/val
   - /data/NeuBoat/Open/lvis_oid/images/val
-  - /data/NeuBoat/Open/object365/images/val
-  - /data/NeuBoat/Open/flicker/images/val
-  - /data/NeuBoat/Open/YOUTUBE/images/val
+  - /data/NeuBoat/Open/objects_365/images/val
 
-nc: 4
-names: ['Buoy', 'Motor Boat', 'Channel Marker', 'Speed Warning Sign']
+nc: 6
+names: ['Person', 'Motor Boat', 'Jet Ski', 'Canoe', 'Buoy', 'Channel Marker']
