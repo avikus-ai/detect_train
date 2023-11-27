@@ -109,7 +109,7 @@ def modify_labels(label_dir: str,
             modify_label(label_file, l_dir)
 
 
-def modify(top_dir: str) -> None:
+def modify(top_dir: str, in_place: bool = False) -> None:
     """
     사용하는 경우: Avikus, Open 이하의 폴더들을 한 번에 수정하려고 할 때
     example:
@@ -123,12 +123,19 @@ def modify(top_dir: str) -> None:
         
         is_splitted = 'train' in os.listdir(label_dir)
         
-        modify_labels(label_dir, is_splitted)
+        modify_labels(label_dir, is_splitted, in_place)
         
         
 if __name__ == '__main__':
+    # 수정 여부 확인
+    proceed = input("Are you sure you want to draw bounding boxes on images? (y/n): ")
+    
+    # 사용자가 'y' 또는 'Y'를 입력한 경우에만 진행합니다.
+    if proceed.lower() == 'y':
+        label_dir = '/data/NeuBoat/Avikus/NEW_KIMPO/labels'
+        modify_labels(label_dir, is_splitted=False, in_place=False)
+    else:
+        print("Operation cancelled.")
+
     # top_dir = '/workspace/data/Avikus'
     # modify(top_dir)
-
-    label_dir = '/data/NeuBoat/Avikus/NEW_KIMPO/labels'
-    modify_labels(label_dir, is_splitted=False, in_place=False)
