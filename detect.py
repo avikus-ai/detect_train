@@ -57,10 +57,23 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
                            increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh, apply_classifier)
 from utils.torch_utils import select_device, smart_inference_mode
 
-
+def load_yolov5classifier(weights, device, dnn, data, fp16, imgsz=(224, 224)):
+    modelc = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=fp16)
+    stride, names, pt = modelc.stride, modelc.names, modelc.pt
+    imgsz = check_img_size(imgsz, s=stride)  # check image size
+    
+    print('load classifier model, {}'.format(names))
+    bs = 1
+    modelc.warmup(imgsz=(1 if pt else bs, 3, *imgsz)) 
+    
+    return modelc
+    
+    
 @smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
+        cls_weights='',  # model path
+        apply_cls=False,  # apply classifier
         source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
         imgsz=(640, 640),  # inference size (height, width)
@@ -119,7 +132,10 @@ def run(
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
-
+    
+    if apply_cls:
+        modelc = load_yolov5classifier(cls_weights, device, dnn, data, half)
+            
     # Run inference
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
@@ -141,10 +157,11 @@ def run(
             pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
 
         # Second-stage classifier (optional)
-        # classifier_model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
-        # torch.Size([1, 3, 384, 640]) (1080, 1920, 3)
-        # pred = apply_classifier(pred, classifier_model, im, im0s)
-
+        # Load Yolov5Classifier
+        if apply_cls:
+            # target_classes 변수를 통해서 특정 클래스만 적용 가능
+            pred = apply_classifier(pred, modelc, im, im0s, target_classes=[0])
+        
         # Define the path for the CSV file
         csv_path = save_dir / 'predictions.csv'
 
@@ -250,6 +267,10 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
+    # cls weights
+    parser.add_argument('--cls-weights', type=str, default='', help='model path')
+    parser.add_argument('--apply-cls', action='store_true', help='apply classifier')
+    
     parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob/screen/0(webcam)')
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')

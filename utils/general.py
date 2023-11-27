@@ -1031,7 +1031,7 @@ def print_mutation(keys, results, hyp, save_dir, bucket, prefix=colorstr('evolve
         subprocess.run(['gsutil', 'cp', f'{evolve_csv}', f'{evolve_yaml}', f'gs://{bucket}'])  # upload
 
 
-def apply_classifier(x, model, img, im0):
+def apply_classifier(x, model, img, im0, target_classes=[0]):
     # Apply a second stage classifier to YOLO outputs
     # Example model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
     im0 = [im0] if isinstance(im0, np.ndarray) else im0
@@ -1056,7 +1056,7 @@ def apply_classifier(x, model, img, im0):
             scale_boxes(img.shape[2:], d[:, :4], im0[i].shape)
 
             # Classes
-            pred_cls1 = d[:, 5].long()
+            # pred_cls1 = d[:, 5].long()
             ims = []
             for a in d:
                 cutout = im0[i][int(a[1]):int(a[3]), int(a[0]):int(a[2])]
@@ -1070,10 +1070,19 @@ def apply_classifier(x, model, img, im0):
             ims_tensor = torch.Tensor(ims).to(d.device)
             ims_tensor = (ims_tensor - mean) / std  # Normalization
             pred_cls2 = model(ims_tensor).argmax(1)  # classifier prediction
+                        
+            # 새로운 열 추가하기
+            for j, a in enumerate(d):
+                if a[5].long().item() in target_classes:
+                    # 지정된 클래스에 속하면 pred_cls2 값을 사용
+                    d[j, -1] = pred_cls2[j].float()
+                else:
+                    # 지정된 클래스에 속하지 않으면 -1 할당
+                    d[j, -1] = -1
+            x[i] = d
             
-            #print(pred_cls2)
+            ######
             # x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
-
     return x
 
 
