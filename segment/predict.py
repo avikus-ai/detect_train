@@ -154,6 +154,11 @@ def run(
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
+                '''
+                Proto Shape(CHW): imgsz(1280)->[32, 184, 320]
+                Proto Shape(CHW): imgsz(640)->[32, 92, 160]
+                '''
+                
                 if retina_masks:
                     # scale bbox first the crop masks
                     det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()  # rescale boxes to im0 size
@@ -164,6 +169,8 @@ def run(
 
                 # Segments
                 if save_txt:
+                    # 원본 이미지 크기에 맞게 segments를 scale
+                    # masks -> 모델 입력 사이즈 기준의 segments (torch.Size([6, 736, 1280]))
                     segments = [
                         scale_segments(im0.shape if retina_masks else im.shape[2:], x, im0.shape, normalize=True)
                         for x in reversed(masks2segments(masks))]
