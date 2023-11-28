@@ -2,9 +2,9 @@
 
 python detect.py \
     --source \
-    sources/hannara.mp4 \
+    sources/video/imgs2.mp4 \
     --weights \
-    checkpoint/eo_2class.pt \
+    checkpoint/eo_2class_July.pt \
     --apply-cls \
     --cls-weights \
     checkpoint/eo_classification.pt \ 

@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
 """
 Validate a trained YOLOv5 detection model on a detection dataset
 
@@ -22,6 +22,7 @@ Usage - formats:
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -560,7 +561,7 @@ def parse_opt():
 
 
 def main(opt):
-    check_requirements(exclude=('tensorboard', 'thop'))
+    check_requirements(ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
 
     if opt.task in ('train', 'val', 'test'):  # run normally
         if opt.conf_thres > 0.001:  # https://github.com/ultralytics/yolov5/issues/1466
@@ -588,12 +589,12 @@ def main(opt):
                     r, _, t = run(**vars(opt), plots=False)
                     y.append(r + t)  # results and times
                 np.savetxt(f, y, fmt='%10.4g')  # save
-            os.system('zip -r study.zip study_*.txt')
+            subprocess.run(['zip', '-r', 'study.zip', 'study_*.txt'])
             plot_val_study(x=x)  # plot
         else:
             raise NotImplementedError(f'--task {opt.task} not in ("train", "val", "test", "speed", "study")')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     opt = parse_opt()
     main(opt)
