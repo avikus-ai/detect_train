@@ -1030,6 +1030,7 @@ def print_mutation(keys, results, hyp, save_dir, bucket, prefix=colorstr('evolve
     if bucket:
         subprocess.run(['gsutil', 'cp', f'{evolve_csv}', f'{evolve_yaml}', f'gs://{bucket}'])  # upload
 
+global save_idx
 
 def apply_classifier(x, model, img, im0, target_classes=[0]):
     # Apply a second stage classifier to YOLO outputs
@@ -1042,6 +1043,8 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
     mean = torch.tensor([0.485, 0.456, 0.406]).to('cuda:0').view(1, 3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225]).to('cuda:0').view(1, 3, 1, 1)
     
+    save_idx = 0
+    
     for i, d in enumerate(x):  # per image
         if d is not None and len(d):
             d = d.clone()
@@ -1049,8 +1052,8 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
 
             # Reshape and pad cutouts
             b = xyxy2xywh(d[:, :4])  # boxes
-            b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # rectangle to square
-            b[:, 2:] = b[:, 2:] * 1.3 + 30  # pad
+            # b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # rectangle to square
+            b[:, 2:] = b[:, 2:] * 1.02 + 10  # pad
             d[:, :4] = xywh2xyxy(b).long()
 
             # Rescale boxes from img_size to im0 size
@@ -1061,18 +1064,30 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
             ims = []
             for a in d:
                 cutout = im0[i][int(a[1]):int(a[3]), int(a[0]):int(a[2])]
-                im = cv2.resize(cutout, (224, 224))  # BGR
+                
+                cutout_h, cutout_w = cutout.shape[:2]
+                min_cutout_size = min(cutout_h, cutout_w)
+                cutout_top, cutout_left = (cutout_h - min_cutout_size) // 2, (cutout_w - min_cutout_size) // 2
+                
+                im = cv2.resize(cutout[cutout_top:cutout_top + min_cutout_size, cutout_left:cutout_left + min_cutout_size], (224, 224), interpolation=cv2.INTER_LINEAR)
+                # im = cv2.resize(cutout, (224, 224))  # BGR
 
-                im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+                im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x224x224
                 im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
+                
+                # 임의로 im을 jpg로 저장
+                cv2.imwrite(f'./{save_idx}.jpg', im.transpose(1, 2, 0)[:, :, ::-1])
+                
                 im /= 255  # 0 - 255 to 0.0 - 1.0
+                                
+                save_idx += 1
                 ims.append(im)
+                
 
             ims_tensor = torch.Tensor(ims).to(d.device)
             ims_tensor = (ims_tensor - mean) / std  # Normalization
             logits = model(ims_tensor) # logits
             probabilities = torch.softmax(logits, dim=1) # softmax
-            
             pred_cls2 = probabilities.argmax(1)  # classifier prediction
             
             # 새로운 열 추가하기

@@ -7,7 +7,7 @@ python detect.py \
     checkpoint/eo_2class_July.pt \
     --apply-cls \
     --cls-weights \
-    checkpoint/eo_classification.pt \ 
+    checkpoint/eo_classification2.pt \
     --device \
     0 \
     --imgsz \
@@ -15,4 +15,5 @@ python detect.py \
     --conf-thres \
     0.3 \
     --project \
-    2stage-test
+    2stage-test \
+    --view-img
