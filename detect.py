@@ -66,7 +66,7 @@ def load_yolov5classifier(weights, device, dnn, data, fp16, imgsz=(224, 224)):
     bs = 1
     modelc.warmup(imgsz=(1 if pt else bs, 3, *imgsz)) 
     
-    return modelc
+    return modelc, names
     
     
 @smart_inference_mode()
@@ -134,7 +134,7 @@ def run(
     vid_path, vid_writer = [None] * bs, [None] * bs
     
     if apply_cls:
-        modelc = load_yolov5classifier(cls_weights, device, dnn, data, half)
+        modelc, names2 = load_yolov5classifier(cls_weights, device, dnn, data, half)
             
     # Run inference
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
@@ -198,29 +198,63 @@ def run(
                 for c in det[:, 5].unique():
                     n = (det[:, 5] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
+                    
                 # Write results
-                for *xyxy, conf, cls in reversed(det):
-                    c = int(cls)  # integer class
-                    label = names[c] if hide_conf else f'{names[c]}'
-                    confidence = float(conf)
-                    confidence_str = f'{confidence:.2f}'
-
-                    if save_csv:
-                        write_to_csv(p.name, label, confidence_str)
-
-                    if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        with open(f'{txt_path}.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
-                    if save_img or save_crop or view_img:  # Add bbox to image
+                if apply_cls:
+                    for *xyxy, conf, cls, cls2 in reversed(det):
                         c = int(cls)  # integer class
-                        label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                        annotator.box_label(xyxy, label, color=colors(c, True))
-                    if save_crop:
-                        save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                        label = names[c] if hide_conf else f'{names[c]}'
+                        confidence = float(conf)
+                        confidence_str = f'{confidence:.2f}'
+                        
+                        c2 = int(cls2)  # integer class
+                        
+                        if save_csv:
+                            write_to_csv(p.name, label, confidence_str)
+
+                        if save_txt:  # Write to file
+                            xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                            line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                            with open(f'{txt_path}.txt', 'a') as f:
+                                f.write(('%g ' * len(line)).rstrip() % line + '\n')
+
+                        if save_img or save_crop or view_img:  # Add bbox to image
+                            c = int(cls)  # integer class
+                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                            # attach names2 to label
+                            if c2 != -1:
+                                label2 = names2[c2] if hide_conf else f'{names2[c2]}'
+                            else:
+                                label2 = '-1'
+                                
+                            label = label + ' ' + label2
+                            # print(label)
+                            annotator.box_label(xyxy, label, color=colors(c, True))
+                        if save_crop:
+                            save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                        
+                else:
+                    for *xyxy, conf, cls in reversed(det):
+                        c = int(cls)  # integer class
+                        label = names[c] if hide_conf else f'{names[c]}'
+                        confidence = float(conf)
+                        confidence_str = f'{confidence:.2f}'
+
+                        if save_csv:
+                            write_to_csv(p.name, label, confidence_str)
+
+                        if save_txt:  # Write to file
+                            xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                            line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                            with open(f'{txt_path}.txt', 'a') as f:
+                                f.write(('%g ' * len(line)).rstrip() % line + '\n')
+
+                        if save_img or save_crop or view_img:  # Add bbox to image
+                            c = int(cls)  # integer class
+                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                            annotator.box_label(xyxy, label, color=colors(c, True))
+                        if save_crop:
+                            save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
             # Stream results
             im0 = annotator.result()

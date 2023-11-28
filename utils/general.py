@@ -1045,6 +1045,7 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
     for i, d in enumerate(x):  # per image
         if d is not None and len(d):
             d = d.clone()
+            d2 = d.clone()
 
             # Reshape and pad cutouts
             b = xyxy2xywh(d[:, :4])  # boxes
@@ -1069,17 +1070,23 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
 
             ims_tensor = torch.Tensor(ims).to(d.device)
             ims_tensor = (ims_tensor - mean) / std  # Normalization
-            pred_cls2 = model(ims_tensor).argmax(1)  # classifier prediction
-                        
+            logits = model(ims_tensor) # logits
+            probabilities = torch.softmax(logits, dim=1) # softmax
+            
+            pred_cls2 = probabilities.argmax(1)  # classifier prediction
+            
             # 새로운 열 추가하기
-            for j, a in enumerate(d):
+            d2 = torch.cat((d2, pred_cls2.unsqueeze(1).float()), dim=1)
+                
+            for j, a in enumerate(d2):
                 if a[5].long().item() in target_classes:
                     # 지정된 클래스에 속하면 pred_cls2 값을 사용
-                    d[j, -1] = pred_cls2[j].float()
+                    d2[j, -1] = pred_cls2[j].float()
                 else:
                     # 지정된 클래스에 속하지 않으면 -1 할당
-                    d[j, -1] = -1
-            x[i] = d
+                    d2[j, -1] = -1
+                    
+            x[i] = d2
             
             ######
             # x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
