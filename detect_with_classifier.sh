@@ -2,7 +2,7 @@
 
 python detect.py \
     --source \
-    sources/video/imgs2.mp4 \
+    sources/video/imgs1.mp4 \
     --weights \
     checkpoint/eo_2class_July.pt \
     --apply-cls \

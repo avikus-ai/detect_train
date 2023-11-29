@@ -36,6 +36,8 @@ import torch
 import torchvision
 import yaml
 
+import torch.nn.functional as F
+
 # Import 'ultralytics' package or install if if missing
 try:
     import ultralytics
@@ -1030,21 +1032,19 @@ def print_mutation(keys, results, hyp, save_dir, bucket, prefix=colorstr('evolve
     if bucket:
         subprocess.run(['gsutil', 'cp', f'{evolve_csv}', f'{evolve_yaml}', f'gs://{bucket}'])  # upload
 
-global save_idx
-
 def apply_classifier(x, model, img, im0, target_classes=[0]):
     # Apply a second stage classifier to YOLO outputs
     # Example model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
     im0 = [im0] if isinstance(im0, np.ndarray) else im0
     
+    # print im0 shape
+    
     # https://pytorch.org/vision/main/models/generated/torchvision.models.efficientnet_b0.html#torchvision.models.efficientnet_b0
     # ImageNet normalization values
     # device_of_model = next(model.parameters()).device
-    mean = torch.tensor([0.485, 0.456, 0.406]).to('cuda:0').view(1, 3, 1, 1)
-    std = torch.tensor([0.229, 0.224, 0.225]).to('cuda:0').view(1, 3, 1, 1)
-    
-    save_idx = 0
-    
+    # mean = torch.tensor([0.485, 0.456, 0.406]).to('cuda:0').view(1, 3, 1, 1)
+    # std = torch.tensor([0.229, 0.224, 0.225]).to('cuda:0').view(1, 3, 1, 1)
+       
     for i, d in enumerate(x):  # per image
         if d is not None and len(d):
             d = d.clone()
@@ -1053,7 +1053,7 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
             # Reshape and pad cutouts
             b = xyxy2xywh(d[:, :4])  # boxes
             # b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # rectangle to square
-            b[:, 2:] = b[:, 2:] * 1.02 + 10  # pad
+            b[:, 2:] = b[:, 2:] #* 1.02 + 10  # pad
             d[:, :4] = xywh2xyxy(b).long()
 
             # Rescale boxes from img_size to im0 size
@@ -1063,8 +1063,10 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
             # pred_cls1 = d[:, 5].long()
             ims = []
             for a in d:
+                from utils.augmentations import classify_transforms
                 cutout = im0[i][int(a[1]):int(a[3]), int(a[0]):int(a[2])]
                 
+                ''' 
                 cutout_h, cutout_w = cutout.shape[:2]
                 min_cutout_size = min(cutout_h, cutout_w)
                 cutout_top, cutout_left = (cutout_h - min_cutout_size) // 2, (cutout_w - min_cutout_size) // 2
@@ -1076,18 +1078,21 @@ def apply_classifier(x, model, img, im0, target_classes=[0]):
                 im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
                 
                 # 임의로 im을 jpg로 저장
-                cv2.imwrite(f'./{save_idx}.jpg', im.transpose(1, 2, 0)[:, :, ::-1])
+                # cv2.imwrite(f'./{save_idx}.jpg', im.transpose(1, 2, 0)[:, :, ::-1])
                 
                 im /= 255  # 0 - 255 to 0.0 - 1.0
-                                
-                save_idx += 1
+                '''
+                
+                transform = classify_transforms()
+                im = transform(cutout)
                 ims.append(im)
                 
-
-            ims_tensor = torch.Tensor(ims).to(d.device)
-            ims_tensor = (ims_tensor - mean) / std  # Normalization
+            ims_tensor = torch.stack(ims).to(d.device)
+            # ims_tensor = (ims_tensor - mean) / std  # Normalization
+            
             logits = model(ims_tensor) # logits
-            probabilities = torch.softmax(logits, dim=1) # softmax
+            probabilities = F.softmax(logits, dim=1)
+            # print(probabilities)
             pred_cls2 = probabilities.argmax(1)  # classifier prediction
             
             # 새로운 열 추가하기
