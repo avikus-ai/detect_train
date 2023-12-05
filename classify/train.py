@@ -11,6 +11,10 @@ Usage - Multi-GPU DDP training:
 Datasets:           --data mnist, fashion-mnist, cifar10, cifar100, imagenette, imagewoof, imagenet, or 'path/to/data'
 YOLOv5-cls models:  --model yolov5n-cls.pt, yolov5s-cls.pt, yolov5m-cls.pt, yolov5l-cls.pt, yolov5x-cls.pt
 Torchvision models: --model resnet50, efficientnet_b0, etc. See https://pytorch.org/vision/stable/models.html
+
+@ My Usage
+python -m torch.distributed.run --nproc_per_node 4 classify/train.py --data /data/instances --model yolov5m-cls.pt --device 0,1,2,3 --imgsz 224 --epochs 100 --batch-size 128 --project classification --na
+me v5m-base
 """
 
 import argparse
