@@ -1,17 +1,18 @@
 #!/bin/bash
 
 python detect.py \
-    --data \
-    data/eo-slicing.yaml \
     --source \
-    data/eo-slicing.yaml \
+    sources/hannara.mp4 \
     --weights \
-    slicing_best.pt \
+    checkpoint/eo_2class.pt \
+    --apply-cls \
+    --cls-weights \
+    checkpoint/eo_classification.pt \ 
     --device \
-    1 \
+    0 \
     --imgsz \
-    1280 \
+    960 \
     --conf-thres \
-    0.5 \
+    0.3 \
     --project \
-    2023-EO-Detect
+    2stage-test
