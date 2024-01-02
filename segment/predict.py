@@ -240,6 +240,22 @@ def run(
                     
                     approx_contours.append(len(approx))
                     
+                    # 모멘트 계산 후 중심점을 기준으로 스케일링
+                    # def scale_contour(contour, scale):
+                    #     # Contour의 모멘트 계산
+                    #     M = cv2.moments(contour)
+                    #     if M['m00'] == 0:
+                    #         return contour
+                    #     cx = int(M['m10']/M['m00'])
+                    #     cy = int(M['m01']/M['m00'])
+
+                    #     scaled_contour = contour.copy()
+                    #     for i in range(contour.shape[0]):
+                    #         scaled_contour[i, :, 0] = int(cx + scale * (contour[i, :, 0] - cx))
+                    #         scaled_contour[i, :, 1] = int(cy + scale * (contour[i, :, 1] - cy))
+
+                    #     return scaled_contour
+                    
                     cv2.drawContours(im0, [approx], -1, (255, 0, 0), 3) # Example: red color, thickness 3
                     
             if view_img:
