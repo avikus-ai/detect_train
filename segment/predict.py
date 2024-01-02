@@ -26,6 +26,10 @@ Usage - formats:
                                           yolov5s-seg.tflite             # TensorFlow Lite
                                           yolov5s-seg_edgetpu.tflite     # TensorFlow Edge TPU
                                           yolov5s-seg_paddle_model       # PaddlePaddle
+                                                                     
+# Usage
+$ python segment/predict.py --weights yolov5l-seg.pt --source sources/KIMPO_230808_4.MOV --classes 8 --view-img --imgsz 1280 --save-txt
+
 """
 
 import argparse
@@ -43,6 +47,7 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from ultralytics.utils.plotting import Annotator, colors, save_one_box
+from ultralytics.utils.ops import scale_image
 
 from models.common import DetectMultiBackend
 from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
@@ -84,6 +89,9 @@ def run(
     vid_stride=1,  # video frame-rate stride
     retina_masks=False,
 ):
+    # 특정 변수에 대한 평균과 최대값을 구하기 위한 변수
+    approx_contours = []
+    
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -91,7 +99,7 @@ def run(
     webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
     screenshot = source.lower().startswith('screen')
     if is_url and is_file:
-        source = check_file(source)  # download
+        source = check_file(source)  # download 
 
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -153,6 +161,7 @@ def run(
             s += '%gx%g ' % im.shape[2:]  # print string
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            
             if len(det):
                 '''
                 Proto Shape(CHW): imgsz(1280)->[32, 184, 320]
@@ -166,7 +175,7 @@ def run(
                 else:
                     masks = process_mask(proto[i], det[:, 6:], det[:, :4], im.shape[2:], upsample=True)  # HWC
                     det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()  # rescale boxes to im0 size
-
+                         
                 # Segments
                 if save_txt:
                     # 원본 이미지 크기에 맞게 segments를 scale
@@ -205,6 +214,34 @@ def run(
 
             # Stream results
             im0 = annotator.result()
+            
+            # approx_contour = []
+            
+            for mask in masks:
+                # 객체당 하나의 마스크를 가지고 있다
+                mask_np = mask.cpu().numpy().astype('uint8')
+                scale_mask = mask_np if retina_masks else scale_image(mask_np, im0.shape) # (2160, 3840, 1)
+                
+                # 1로 이뤄진 영역을 찾는다 (https://docs.opencv.org/4.6.0/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0)
+                # cv2.CHAIN_APPROX_NONE: stores absolutely all the contour points.
+                contours, _ = cv2.findContours(scale_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                
+                for contour in contours:
+                    # 엄청 작은 contour는 무시한다
+                    if cv2.contourArea(contour) < 2000:
+                        continue
+                    
+                    epsilon = 0.01 * cv2.arcLength(contour, True)
+                    approx = cv2.approxPolyDP(contour, epsilon, True)
+                    # approx_contour.append(approx)
+                    
+                    # print length of apporx
+                    # print(len(approx))
+                    
+                    approx_contours.append(len(approx))
+                    
+                    cv2.drawContours(im0, [approx], -1, (255, 0, 0), 3) # Example: red color, thickness 3
+                    
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
                     windows.append(p)
@@ -245,6 +282,15 @@ def run(
     if update:
         strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
 
+    """
+    When epsilon = 0.01 * cv2.arcLength(contour, True), 
+    approx_contours의 mean, max 출력
+    approx_contours mean: 10
+    approx_contours max: 23
+    """
+    print(f"approx_contours mean: {sum(approx_contours)/len(approx_contours)}")
+    print(f"approx_contours max: {max(approx_contours)}")
+    
 
 def parse_opt():
     parser = argparse.ArgumentParser()
