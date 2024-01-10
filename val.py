@@ -399,7 +399,7 @@ def run(
             LOGGER.info(f'pycocotools unable to run: {e}')
         
         val_dirs = data.get('val')
-        data_open = ['flicker', 'lvis_oid', 'objects_365', 'YOUTUBE', 'seaship_smdplus']
+        data_open = ['flicker', 'lvis_oid', 'objects_365', '22_YOUTUBE', 'seaship_smdplus']
         eval_open = True
         eval_avikus = True
         for val_dir in val_dirs:
@@ -452,21 +452,21 @@ def run(
         eval_open.summarize()
         map_open, map50_open = eval_open.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
         # update results (mAP@0.5:0.95, mAP@0.5)
-        LOGGER.info(f"open mAP@0.5:0.95: {eval_open.stats[0]}")
-        LOGGER.info(f"open mAP@0.5: {eval_open.stats[1]}")
+        LOGGER.info(f"open mAP@0.5:0.95: {map_open}")
+        LOGGER.info(f"open mAP@0.5: {map50_open}")
 
         eval_avikus.summarize()
         map_avikus, map50_avikus = eval_avikus.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
         # update results (mAP@0.5:0.95, mAP@0.5)
-        LOGGER.info(f"avikus mAP@0.5:0.95: {eval_avikus.stats[0]}")
-        LOGGER.info(f"avikus mAP@0.5: {eval_avikus.stats[1]}")
+        LOGGER.info(f"avikus mAP@0.5:0.95: {map_avikus}")
+        LOGGER.info(f"avikus mAP@0.5: {map50_avikus}")
         
         # @ Author yyj
         # @ Date 23.05.06
         # @ Description: Wrong size mAP in wandb. The reason is that it is overwritten by eval.stats[3:6], which is the result of separate mAP.
         # Plots
         confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
-        # callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix)
+        callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval.stats[3:6])
         callbacks.run('on_val_end', nt, tp, fp, p, r, f1, ap, ap50, ap_class, confusion_matrix, eval_open.stats[3:6])
             
         # @ Author yyj

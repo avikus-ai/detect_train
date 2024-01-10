@@ -1,15 +1,10 @@
 #!/bin/bash
 
-python val.py \
-    --data \
-    data/eo-slicing.yaml \
-    --weights \
-    slicing_best.pt \
-    --device \
-    1 \
-    --imgsz \
-    1280 \
-    --conf-thres \
-    0.25 \
-    --iou-thres \
-    0.45
+python3 val.py \
+    --data data/2-class-revised+s3.yaml \
+    --weights  ./best_park.pt \
+    --device 1 \
+    --imgsz 960 \
+    --conf-thres 0.4 \
+    --iou-thres 0.45 \
+    # --save-json

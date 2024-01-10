@@ -1,24 +1,14 @@
 #!/bin/bash
 
-python train.py \
-    --hyp \
-    data/hyps/eo.yaml \
-    --data \
-    data/eo-slicing.yaml \
-    --cfg \
-    models/yolov5s6.yaml \
-    --weights \
-    yolov5s6.pt \
-    --device \
-    1 \
-    --imgsz \
-    1280 \
-    --epochs \
-    50 \
-    --batch-size \
-    32 \
-    --project \
-    Seaspan_project \
-    --name \
-    v5s6_1280_wv5s6_mosaic1.0_slicing
-
+python3 train.py \
+    --hyp data/hyps/eo.yaml \
+    --data 'data/3-class-revised+s3.yaml' \
+    --cfg models/yolov5m.yaml \
+    --weights yolov5m.pt \
+    --device '0,1'\
+    --imgsz 960 \
+    --epochs 150 \
+    --batch-size 44 \
+    --project '3-class-maersk' \
+    --name 'v5m_detect-train_avi'\
+    --workers 16
