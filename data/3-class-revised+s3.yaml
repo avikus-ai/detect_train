@@ -1,0 +1,111 @@
+train:
+  - /data/TRAIN/3-CLASS/22_2939/images/train
+  - /data/TRAIN/3-CLASS/22_ccnuri/images/train
+  - /data/TRAIN/3-CLASS/22_GORAE/images/train
+  - /data/TRAIN/3-CLASS/22_hannara/busan/images/train
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_arriving/images/train
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_berth/images/train
+  - /data/TRAIN/3-CLASS/22_KHOPE/images/train
+  - /data/TRAIN/3-CLASS/22_maersk/eo1/images/train
+  - /data/TRAIN/3-CLASS/22_maersk/eo2/images/train
+  - /data/TRAIN/3-CLASS/22_maersk/eo3/images/train
+  - /data/TRAIN/3-CLASS/22_YMwinner/images/train
+  - /data/TRAIN/3-CLASS/S3001-CAPITAL/images/train
+  - /data/TRAIN/3-CLASS/S3001-HYUNDAIGLOVIS/images/train
+  - /data/TRAIN/3-CLASS/S3001-SEASPAN/images/train
+  - /data/TRAIN/3-CLASS/S3001004-maersk/images/train
+  - /data/TRAIN/3-CLASS/S3001004-UIPA/images/train
+
+  - /data/TRAIN/3-CLASS/22_YOUTUBE/images/train
+  - /data/TRAIN/3-CLASS/flicker/images/train
+  - /data/TRAIN/3-CLASS/lvis_oid/images/train
+  - /data/TRAIN/3-CLASS/objects_365/images/train
+  - /data/TRAIN/3-CLASS/seaship_smdplus/images/train
+
+  - /data/TRAIN/3-CLASS-sliced/22_2939/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_ccnuri/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_GORAE/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/busan/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_arriving/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_berth/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_KHOPE/s1/images
+  - /data/TRAIN/3-CLASS-sliced/22_YMwinner/s1/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-CAPITAL/s1/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-HYUNDAIGLOVIS/s1/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-SEASPAN/s1/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-maersk/s1/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-UIPA/s1/images
+
+  - /data/TRAIN/3-CLASS-sliced/22_2939/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_ccnuri/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_GORAE/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/busan/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_arriving/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_berth/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_KHOPE/s2/images
+  - /data/TRAIN/3-CLASS-sliced/22_YMwinner/s2/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-CAPITAL/s2/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-HYUNDAIGLOVIS/s2/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-SEASPAN/s2/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-maersk/s2/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-UIPA/s2/images
+
+  - /data/TRAIN/3-CLASS-sliced/22_2939/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_ccnuri/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_GORAE/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/busan/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_arriving/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_hannara/incheon_berth/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_KHOPE/s3/images
+  - /data/TRAIN/3-CLASS-sliced/22_YMwinner/s3/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-CAPITAL/s3/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-HYUNDAIGLOVIS/s3/images
+  - /data/TRAIN/3-CLASS-sliced/S3001-SEASPAN/s3/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-maersk/s3/images
+  - /data/TRAIN/3-CLASS-sliced/S3001004-UIPA/s3/images
+  
+val:
+  - /data/TRAIN/3-CLASS/22_2939/images/val
+  - /data/TRAIN/3-CLASS/22_ccnuri/images/val
+  - /data/TRAIN/3-CLASS/22_GORAE/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/busan/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_arriving/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_berth/images/val
+  - /data/TRAIN/3-CLASS/22_KHOPE/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo1/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo2/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo3/images/val
+  - /data/TRAIN/3-CLASS/22_YMwinner/images/val
+  - /data/TRAIN/3-CLASS/S3001-HYUNDAIGLOVIS/images/val
+  - /data/TRAIN/3-CLASS/S3001-SEASPAN/images/val
+  - /data/TRAIN/3-CLASS/S3001004-maersk/images/val
+  - /data/TRAIN/3-CLASS/S3001004-UIPA/images/val
+
+  - /data/TRAIN/3-CLASS/22_YOUTUBE/images/val
+  - /data/TRAIN/3-CLASS/flicker/images/val
+  - /data/TRAIN/3-CLASS/lvis_oid/images/val
+  - /data/TRAIN/3-CLASS/objects_365/images/val
+  - /data/TRAIN/3-CLASS/seaship_smdplus/images/val
+
+detect:
+  - /data/TRAIN/3-CLASS/22_2939/images/val
+  - /data/TRAIN/3-CLASS/22_ccnuri/images/val
+  - /data/TRAIN/3-CLASS/22_GORAE/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/busan/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_arriving/images/val
+  - /data/TRAIN/3-CLASS/22_hannara/incheon_berth/images/val
+  - /data/TRAIN/3-CLASS/22_KHOPE/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo1/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo2/images/val
+  - /data/TRAIN/3-CLASS/22_maersk/eo3/images/val
+  - /data/TRAIN/3-CLASS/22_YMwinner/images/val
+
+  - /data/TRAIN/3-CLASS/22_YOUTUBE/images/val
+  - /data/TRAIN/3-CLASS/flicker/images/val
+  - /data/TRAIN/3-CLASS/lvis_oid/images/val
+  - /data/TRAIN/3-CLASS/objects_365/images/val
+  - /data/TRAIN/3-CLASS/seaship_smdplus/images/val
+
+
+nc: 3
+names: ['Vessel', 'Boat', 'Aid']
