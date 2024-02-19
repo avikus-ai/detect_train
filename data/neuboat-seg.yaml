@@ -1,0 +1,14 @@
+train:
+  - /data/NeuBoat/Batch1_3223_img/BUSAN/images
+  - /data/NeuBoat/Batch1_3223_img/NEW_KIMPO/images
+  - /data/NeuBoat/Batch1_3223_img/TAMPA/images
+  
+val: 
+  - /data/NeuBoat/Batch1_3223_img/NEW_WANGSAN/images
+  - /data/NeuBoat/Batch1_3223_img/FortLauderdale/images
+
+nc: 6
+names: ['Jet Ski', 'Canoe', 'Buoy', 'Channel Marker', 'Pillar', 'Motor Boat']
+
+# nc: 7
+# names: ['Person', 'Jet Ski', 'Canoe', 'Buoy', 'Channel Marker', 'Pillar', 'Motor Boat']
