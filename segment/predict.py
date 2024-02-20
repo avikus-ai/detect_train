@@ -28,7 +28,8 @@ Usage - formats:
                                           yolov5s-seg_paddle_model       # PaddlePaddle
                                                                      
 # Usage
-$ python segment/predict.py --weights yolov5l-seg.pt --source sources/KIMPO_230808_4.MOV --classes 8 --view-img --imgsz 1280 --save-txt
+
+$ python segment/predict.py --weights runs/train-seg/exp6/weights/best.pt --source data/neuboat-seg.yaml --imgsz 960 --device 0 --retina-masks
 
 """
 
@@ -39,6 +40,8 @@ import sys
 from pathlib import Path
 
 import torch
+
+import yaml
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # YOLOv5 root directory
@@ -165,6 +168,7 @@ def run(
             if len(det):
                 '''
                 Proto Shape(CHW): imgsz(1280)->[32, 184, 320]
+                Proto Shape(CHW): imgsz(960)->[32, 136, 240]
                 Proto Shape(CHW): imgsz(640)->[32, 92, 160]
                 '''
                 
@@ -225,13 +229,15 @@ def run(
                 # 1로 이뤄진 영역을 찾는다 (https://docs.opencv.org/4.6.0/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0)
                 # cv2.CHAIN_APPROX_NONE: stores absolutely all the contour points.
                 contours, _ = cv2.findContours(scale_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                find_contours = False
                 
                 for contour in contours:
                     # 엄청 작은 contour는 무시한다
                     if cv2.contourArea(contour) < 2000:
                         continue
                     
-                    epsilon = 0.01 * cv2.arcLength(contour, True)
+                    find_contours = True
+                    epsilon = 0.005 * cv2.arcLength(contour, True)
                     approx = cv2.approxPolyDP(contour, epsilon, True)
                     # approx_contour.append(approx)
                     
@@ -256,7 +262,8 @@ def run(
 
                     #     return scaled_contour
                     
-                    cv2.drawContours(im0, [approx], -1, (255, 0, 0), 3) # Example: red color, thickness 3
+                    if find_contours:
+                        cv2.drawContours(im0, [approx], -1, (255, 0, 0), 3) # Example: blue color, thickness 3
                     
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
@@ -346,7 +353,27 @@ def parse_opt():
 
 def main(opt):
     check_requirements(ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
+    
+    ## @Author youngjae.you
+    ## @Date 24.02.19
+    ## @Description: For multi-source, use Yaml file 
+    if opt.source.endswith('yaml'):
+        with open(opt.source, 'r') as file:
+            yaml_data = yaml.safe_load(file)
+        detect_dirs = yaml_data.get('val')
+        
+        for detect_dir in detect_dirs:
+            opt.source = detect_dir
+            opt.name = detect_dir.rsplit('/images', 1)[0]
+            
+            # if /root 
+            if opt.name[0] == '/':
+                opt.name = opt.name[1:]
+
+            run(**vars(opt))
+            
+    else:
+        run(**vars(opt))
 
 
 if __name__ == '__main__':
