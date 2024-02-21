@@ -17,6 +17,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 from random import randint
+import PIL
 
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
@@ -26,10 +27,10 @@ def random_color():
     # 최대한 밝은 색상 위주로 생성하도록 한다
     return (randint(0, 150), randint(0, 150), randint(0, 150))
 
-# 카테고리별로 색상을 미리 할당합니다.
-category_colors = {category: random_color() for category in names}
-
 def bbox_drawer(img_dir, label_dir, out_dir, names):
+    # 카테고리별로 색상을 미리 할당합니다.
+    category_colors = {category: random_color() for category in names}
+
     img_files = os.listdir(img_dir)
     no_label_imgs = []
     no_label_img_cnt = 0
@@ -42,6 +43,10 @@ def bbox_drawer(img_dir, label_dir, out_dir, names):
         
         img_file_path = img_dir / img_file
         label_file_path = label_dir / label_file
+        
+        if not label_file_path.exists() or not img_file_path.exists():
+            raise FileNotFoundError(f'Image or label file not found: {img_file}, {label_file}')
+        
         pil_img = Image.open(img_file_path)
         
         # if image is portrait, rotate it
@@ -74,11 +79,14 @@ def bbox_drawer(img_dir, label_dir, out_dir, names):
                 box_color = category_colors.get(category_id, (255, 255, 255))  # 카테고리가 없는 경우 흰색 사용
                 pil_draw.rectangle((xx1, yy1, xx2, yy2), outline=box_color, width=2)
                 text = f'{names[category_id]}'
-                # 텍스트 배경을 생성합니다.
-                text_size = ImageFont.truetype('arial.ttf', size=20).getsize(text)
-                pil_draw.rectangle((xx1, yy1 - 22, xx1 + text_size[0], yy1), fill=box_color)
-                # 텍스트를 그립니다. (흰색으로 보이도록 합니다.)
-                pil_draw.text((xx1, yy1 - 22), text, fill=(255,255,255), font=ImageFont.truetype('arial.ttf', size=20))
+                # 수정된 코드:
+                font = ImageFont.truetype('arial.ttf', size=20)
+                # 텍스트 크기를 계산합니다.
+                text_size = pil_draw.textlength(text, font=font)
+                # 텍스트 배경을 그립니다.
+                pil_draw.rectangle((xx1, yy1 - 22, xx1 + text_size, yy1), fill=box_color)
+                # 텍스트를 그립니다. (위 배경 위에)
+                pil_draw.text((xx1, yy1 - 22), text, fill=(255, 255, 255), font=font)
         
         img_out_file_path = out_dir / img_file
         pil_img.save(img_out_file_path)
@@ -89,18 +97,19 @@ def bbox_drawer(img_dir, label_dir, out_dir, names):
 if __name__ == '__main__':
     
     data_root_path = '/data/NeuBoat'
-    label_folder_name = 'labels.bak'
+    # label_folder_name = 'labels_all'
+    label_folder_name = 'labels'
     
     data = \
     {
-        'Avikus': {
-            'NEW_BUSAN': ['train', 'val'],
-            'NEW_KIMPO': [],
-            'NEW_WANGSAN': ['train', 'val'],
-            'Wangsan': ['train', 'val'],
+        'Avikus.bak': {
+            # 'NEW_BUSAN': ['train', 'val'],
+            # 'NEW_KIMPO': [],
+            # 'NEW_WANGSAN': ['train', 'val'],
+            # 'Wangsan': ['train', 'val'],
             
-            'TAMPA': ['train', 'val'],
-            'FLL': ['train', 'val'],
+            # 'TAMPA': ['train', 'val'],
+            # 'FLL': ['train', 'val'],
             'ibex': [],
         },
         'Open': {
@@ -117,11 +126,17 @@ if __name__ == '__main__':
                 IMG_DIR = Path(f'{data_root_path}/{k1}/{k2}/images/')
                 LABEL_DIR = Path(f'{data_root_path}/{k1}/{k2}/{label_folder_name}/')
                 OUT_DIR = Path(f'{data_root_path}/{k1}/{k2}/masked_images')
+                
+                print(OUT_DIR)
+                OUT_DIR.mkdir(parents=True, exist_ok=True)
+                bbox_drawer(IMG_DIR, LABEL_DIR, OUT_DIR, names)
+                
             else:
                 for v in v2:
                     IMG_DIR = Path(f'{data_root_path}/{k1}/{k2}/images/{v}')
                     LABEL_DIR = Path(f'{data_root_path}/{k1}/{k2}/{label_folder_name}/{v}')
                     OUT_DIR = Path(f'{data_root_path}/{k1}/{k2}/masked_images_{v}')
-                
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    bbox_drawer(IMG_DIR, LABEL_DIR, OUT_DIR, names)
+    
+                    print(OUT_DIR)
+                    OUT_DIR.mkdir(parents=True, exist_ok=True)
+                    bbox_drawer(IMG_DIR, LABEL_DIR, OUT_DIR, names)
